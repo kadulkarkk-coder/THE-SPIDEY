@@ -27,16 +27,20 @@ class CommandDispatcher:
                 raise ValueError(f"Command already registered: {key}")
             self._handlers[key] = handler
 
+    def handler_for(self, name: str) -> CommandHandler:
+        key = name.strip().lower()
+        with self._lock:
+            handler = self._handlers.get(key)
+        if handler is None:
+            raise UnknownCommandError(f"Unknown command: {key}")
+        return handler
+
     def dispatch(self, request: CommandRequest) -> CommandResponse:
         normalized = request.normalized()
         if not normalized.text:
             raise EmptyCommandError("Command cannot be empty")
         name = normalized.text.split(maxsplit=1)[0].lower()
-        with self._lock:
-            handler = self._handlers.get(name)
-        if handler is None:
-            raise UnknownCommandError(f"Unknown command: {name}")
-        result = handler(normalized)
+        result = self.handler_for(name)(normalized)
         if isinstance(result, CommandResponse):
             return result
         return CommandResponse.success(normalized, str(result))
