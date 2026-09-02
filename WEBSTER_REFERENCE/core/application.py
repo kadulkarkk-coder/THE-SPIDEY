@@ -1,8 +1,7 @@
-"""WEBSTER application runtime with the Sprint 3 command pipeline."""
+"""WEBSTER application runtime with the Sprint 4 request pipeline."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from time import monotonic
 from typing import Any
 from uuid import uuid4
 
@@ -11,10 +10,10 @@ from .command_dispatcher import CommandDispatcher
 from .component_registry import ComponentRegistry
 from .config import WebsterConfig
 from .diagnostics import Diagnostics
-from .errors import CommandError
 from .event_bus import EventBus
 from .health_monitor import HealthMonitor
 from .lifecycle import LifecycleManager, LifecycleState
+from .request_pipeline import RequestPipeline
 from .runtime_context import RuntimeContext
 from .service_registry import ServiceRegistry
 
@@ -34,6 +33,7 @@ class WebsterApplication:
         self.diagnostics = Diagnostics()
         self.context = RuntimeContext(session_id=uuid4().hex)
         self.commands = CommandDispatcher()
+        self.pipeline = RequestPipeline(self.commands, self.diagnostics)
         self.started_at: datetime | None = None
         self._register_core_components()
         self._register_commands()
@@ -43,10 +43,12 @@ class WebsterApplication:
         self.health.register("health_monitor")
         self.health.register("lifecycle")
         self.health.register("command_dispatcher")
+        self.health.register("request_pipeline")
         self.components.register("event_bus", self.events, "In-process event bus")
         self.components.register("health_monitor", self.health, "Runtime health state")
         self.components.register("lifecycle", self.lifecycle, "Application lifecycle")
         self.components.register("command_dispatcher", self.commands, "Command routing")
+        self.components.register("request_pipeline", self.pipeline, "Unified request processing")
         self.services.register_service("diagnostics", self.diagnostics, "Runtime metrics")
 
     def _register_commands(self) -> None:
@@ -63,7 +65,7 @@ class WebsterApplication:
         try:
             self.lifecycle.start()
             self.started_at = datetime.now(timezone.utc)
-            self.events.publish("system.started", {"version": self.VERSION})
+            self.events.publish("system.started", {"version": self.VERSION, "session_id": self.context.session_id})
         except Exception as exc:
             self.lifecycle.fail()
             self.health.set_status("lifecycle", "failed", healthy=False, detail=str(exc))
@@ -90,22 +92,20 @@ class WebsterApplication:
         }
 
     def handle(self, request: CommandRequest) -> CommandResponse:
-        """Run one request through dispatch, error handling, events, and metrics."""
-        started = monotonic()
-        try:
-            response = self.commands.dispatch(request)
-        except CommandError as exc:
-            response = CommandResponse.failure(request.normalized(), str(exc), exc.__class__.__name__.upper())
-        except Exception as exc:
-            response = CommandResponse.failure(request.normalized(), "Internal runtime error.", "INTERNAL_ERROR")
-            self.events.publish("command.error", {"request_id": request.request_id, "error": str(exc)})
-        self.diagnostics.record(ok=response.ok, started_at=started)
-        self.events.publish("command.completed", {"request_id": request.request_id, "ok": response.ok})
+        """Run one request through intent, dispatch, execution, events, and metrics."""
+        response = self.pipeline.process(request)
+        self.events.publish(
+            "command.completed" if response.ok else "command.failed",
+            {"request_id": response.request_id, "ok": response.ok, "error_code": response.error_code},
+        )
         return response
 
     def command(self, text: str) -> str:
         """Backward-compatible text command API for the CLI."""
-        return self.handle(CommandRequest(text)).message
+        response = self.handle(CommandRequest(text))
+        if response.ok:
+            return response.message
+        return f"Error [{response.error_code}]: {response.message}"
 
     def _command_help(self, request: CommandRequest) -> str:
         return "Available commands: " + ", ".join(self.commands.names())
