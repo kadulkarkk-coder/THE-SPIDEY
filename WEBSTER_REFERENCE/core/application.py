@@ -1,4 +1,4 @@
-"""WEBSTER application runtime with the Sprint 4 request pipeline."""
+"""WEBSTER application runtime with the Sprint 6 intelligence layer."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -16,10 +16,14 @@ from .lifecycle import LifecycleManager, LifecycleState
 from .request_pipeline import RequestPipeline
 from .runtime_context import RuntimeContext
 from .service_registry import ServiceRegistry
+from ..intelligence.conversation_manager import ConversationManager
+from ..intelligence.decision_engine import DecisionEngine
+from ..intelligence.planning_engine import PlanningEngine
+from ..intelligence.progress_reporter import ProgressReporter
 
 
 class WebsterApplication:
-    """Dependency-free WEBSTER runtime foundation."""
+    """Dependency-free WEBSTER runtime with a modular intelligence foundation."""
 
     VERSION = "0.1.0-alpha"
 
@@ -34,8 +38,13 @@ class WebsterApplication:
         self.context = RuntimeContext(session_id=uuid4().hex)
         self.commands = CommandDispatcher()
         self.pipeline = RequestPipeline(self.commands, self.diagnostics)
+        self.conversation = ConversationManager()
+        self.decision_engine = DecisionEngine()
+        self.planning = PlanningEngine()
+        self.progress = ProgressReporter()
         self.started_at: datetime | None = None
         self._register_core_components()
+        self._register_intelligence_services()
         self._register_commands()
 
     def _register_core_components(self) -> None:
@@ -51,11 +60,19 @@ class WebsterApplication:
         self.components.register("request_pipeline", self.pipeline, "Unified request processing")
         self.services.register_service("diagnostics", self.diagnostics, "Runtime metrics")
 
+    def _register_intelligence_services(self) -> None:
+        self.services.register_service("conversation", self.conversation, "Bounded conversation state")
+        self.services.register_service("decision_engine", self.decision_engine, "Provider-backed decision boundary")
+        self.services.register_service("planning", self.planning, "Explicit plan decomposition")
+        self.services.register_service("progress", self.progress, "Observable task progress")
+
     def _register_commands(self) -> None:
         self.commands.register("help", self._command_help)
         self.commands.register("status", self._command_status)
         self.commands.register("diagnostics", self._command_diagnostics)
         self.commands.register("context", self._command_context)
+        self.commands.register("ai", self._command_ai)
+        self.commands.register("plan", self._command_plan)
         self.commands.register("exit", self._command_exit)
         self.commands.register("quit", self._command_exit)
 
@@ -88,6 +105,8 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
+            "services": 5 + 4,
+            "provider": self.decision_engine.provider.name,
             "healthy": self.health.is_healthy(),
         }
 
@@ -118,6 +137,18 @@ class WebsterApplication:
 
     def _command_context(self, request: CommandRequest) -> str:
         return str(self.context.snapshot())
+
+    def _command_ai(self, request: CommandRequest) -> str:
+        prompt = request.text.split(maxsplit=1)[1] if len(request.text.split(maxsplit=1)) > 1 else ""
+        self.conversation.add("user", prompt or request.text)
+        decision = self.decision_engine.decide(prompt)
+        self.conversation.add("assistant", decision.rationale)
+        return f"[{decision.provider}] {decision.rationale}"
+
+    def _command_plan(self, request: CommandRequest) -> str:
+        goal = request.text.split(maxsplit=1)[1] if len(request.text.split(maxsplit=1)) > 1 else ""
+        plan = self.planning.create_plan(goal)
+        return str({"goal": plan.goal, "steps": [step.description for step in plan.steps]})
 
     def _command_exit(self, request: CommandRequest) -> str:
         self.stop()
