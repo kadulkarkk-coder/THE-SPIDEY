@@ -1,7 +1,7 @@
 """Lightweight contracts for the WEBSTER desktop Floating Orb."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from time import monotonic
 
@@ -19,7 +19,7 @@ class OrbState(str, Enum):
 class OrbEvent:
     state: OrbState
     message: str = ""
-    timestamp: float = monotonic()
+    timestamp: float = field(default_factory=monotonic)
 
 
 @dataclass(frozen=True)
