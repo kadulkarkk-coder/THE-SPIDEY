@@ -24,10 +24,21 @@ class PluginRegistry:
         with self._lock:
             return self._plugins[plugin_id]
 
-    def find_by_capability(self, capability: str) -> tuple[PluginSpec, ...]:
+    def find_by_capability(self, capability: str, *, builtin: bool | None = None) -> tuple[PluginSpec, ...]:
         capability = capability.strip()
         with self._lock:
-            return tuple(plugin for plugin in self._plugins.values() if capability in plugin.capabilities)
+            return tuple(
+                plugin for plugin in self._plugins.values()
+                if capability in plugin.capabilities and (builtin is None or plugin.builtin == builtin)
+            )
+
+    def network_plugins(self) -> tuple[PluginSpec, ...]:
+        with self._lock:
+            return tuple(plugin for plugin in self._plugins.values() if plugin.requires_network)
+
+    def local_plugins(self) -> tuple[PluginSpec, ...]:
+        with self._lock:
+            return tuple(plugin for plugin in self._plugins.values() if not plugin.requires_network)
 
     def list(self) -> tuple[PluginSpec, ...]:
         with self._lock:
