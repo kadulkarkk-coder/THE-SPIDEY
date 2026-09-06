@@ -1,0 +1,25 @@
+{
+  "name": "WEBSTER Mark D",
+  "version": "0.1.0-mark-d",
+  "release_stage": "reference-release",
+  "platforms": ["windows", "android"],
+  "offline_first": true,
+  "external_ai_required": false,
+  "evolution_model": "validated-reversible-plugins",
+  "branch_policy": "main-only",
+  "build_artifacts": {
+    "windows": "not_compiled_by_reference_sprint",
+    "android": "not_compiled_by_reference_sprint"
+  },
+  "security": {
+    "device_pairing": true,
+    "remote_sessions": true,
+    "permission_checks": true,
+    "audit_events": true
+  },
+  "resource_policy": {
+    "low_overhead_core": true,
+    "background_camera_loop": false,
+    "unnecessary_continuous_polling": false
+  }
+}
