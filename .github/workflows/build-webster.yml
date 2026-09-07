@@ -30,6 +30,12 @@ jobs:
       - name: Build WEBSTER.exe
         run: pyinstaller --clean packaging/windows/WEBSTER.spec
 
+      - name: Verify Windows executable
+        shell: powershell
+        run: |
+          if (-not (Test-Path 'dist/WEBSTER.exe')) { throw 'WEBSTER.exe was not produced.' }
+          Write-Host "WEBSTER.exe size: $((Get-Item 'dist/WEBSTER.exe').Length) bytes"
+
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
@@ -50,13 +56,19 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.11'
+          gradle-version: '8.11.1'
 
       - name: Build WEBSTER APK
         working-directory: packaging/android
         run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify Android APK
+        shell: bash
+        run: |
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
