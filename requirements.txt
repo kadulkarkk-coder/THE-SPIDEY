@@ -1,0 +1,4 @@
+# WEBSTER Mark D runtime dependencies
+# The current reference core is intentionally dependency-light and uses Python's standard library.
+# Keep this file as the single runtime dependency manifest for future bundled integrations.
+# Build-only tools are listed in requirements-build.txt.
