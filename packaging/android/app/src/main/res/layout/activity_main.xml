@@ -3,28 +3,83 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp">
+    android:background="#08090D"
+    android:padding="18dp">
 
-    <ImageView
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/webster_spider"
-        android:contentDescription="WEBSTER spider logo" />
-
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="WEBSTER"
-        android:textSize="32sp"
-        android:textStyle="bold" />
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:src="@drawable/webster_spider"
+            android:contentDescription="WEBSTER" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="WEBSTER  MARK D"
+            android:textColor="#F3F4F6"
+            android:textSize="21sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● ONLINE"
+            android:textColor="#58D68D"
+            android:textSize="12sp" />
+    </LinearLayout>
 
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="wrap_content"
+    <ScrollView
+        android:id="@+id/chat_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="14dp"
+        android:background="#11141B"
+        android:padding="14dp">
+        <TextView
+            android:id="@+id/chat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="WEBSTER › Starting local-first intelligence...\n\n"
+            android:textColor="#F3F4F6"
+            android:textSize="16sp"
+            android:lineSpacingExtra="5dp" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Starting..."
-        android:textSize="16sp" />
+        android:layout_marginTop="10dp">
+        <EditText
+            android:id="@+id/input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Ask WEBSTER..."
+            android:textColor="#F3F4F6"
+            android:hintTextColor="#9AA3B2"
+            android:background="#171B24"
+            android:padding="13dp"
+            android:singleLine="true" />
+        <Button
+            android:id="@+id/send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:text="SEND" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp">
+        <Button android:id="@+id/voice" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="🎙 VOICE" />
+        <Button android:id="@+id/camera" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="6dp" android:text="📷 CAMERA" />
+        <Button android:id="@+id/system" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="6dp" android:text="⚙ SYSTEM" />
+    </LinearLayout>
 </LinearLayout>
