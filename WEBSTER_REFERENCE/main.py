@@ -1,12 +1,12 @@
 """WEBSTER executable entry point.
 
-Sprint 1 provides a dependency-free CLI so the real system has a verified
-launch path before higher-level AI, memory, agent, tool, and UI layers are added.
+The entry point is package-aware so frozen builds and normal source execution
+share the same import path.
 """
 
 from __future__ import annotations
 
-from core.application import WebsterApplication
+from .core.application import WebsterApplication
 
 
 def main() -> None:
@@ -33,4 +33,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # Direct execution is intentionally unsupported; use `python -m WEBSTER_REFERENCE.main`
+    # so package-relative imports remain valid.
+    raise SystemExit("Run WEBSTER with: python -m WEBSTER_REFERENCE.main")
