@@ -62,7 +62,7 @@
             android:layout_weight="1"
             android:hint="Ask WEBSTER..."
             android:textColor="#F3F4F6"
-            android:hintTextColor="#9AA3B2"
+            android:textColorHint="#9AA3B2"
             android:background="#171B24"
             android:padding="13dp"
             android:singleLine="true" />
