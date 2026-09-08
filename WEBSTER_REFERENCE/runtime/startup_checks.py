@@ -13,17 +13,23 @@ class StartupCheck:
     name: str
     ok: bool
     detail: str
+    required: bool = True
 
 
 class StartupChecks:
-    """Validate only prerequisites WEBSTER can safely inspect locally."""
+    """Validate prerequisites without making optional UI dependencies mandatory."""
 
     def run(self) -> list[StartupCheck]:
         return [
             StartupCheck("python", sys.version_info >= (3, 10), platform.python_version()),
             StartupCheck("platform", os.name in {"nt", "posix"}, os.name),
             StartupCheck("writable_temp", self._writable_temp(), "temporary directory access"),
-            StartupCheck("tkinter", importlib.util.find_spec("tkinter") is not None, "optional native GUI dependency"),
+            StartupCheck(
+                "tkinter",
+                importlib.util.find_spec("tkinter") is not None,
+                "optional native GUI dependency",
+                required=False,
+            ),
         ]
 
     @staticmethod
@@ -38,6 +44,6 @@ class StartupChecks:
     def summary(self) -> dict[str, object]:
         checks = self.run()
         return {
-            "ok": all(item.ok for item in checks),
+            "ok": all(item.ok for item in checks if item.required),
             "checks": [item.__dict__ for item in checks],
         }
