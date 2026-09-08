@@ -7,7 +7,7 @@ REFERENCE = ROOT / "WEBSTER_REFERENCE"
 ICON = ROOT / "packaging" / "windows" / "webster.ico"
 
 PACKAGE = "WEBSTER_REFERENCE"
-hiddenimports = collect_submodules(PACKAGE)
+hiddenimports = collect_submodules(PACKAGE) + ["cv2", "PIL", "PIL.Image", "PIL.ImageTk"]
 
 analysis = Analysis(
     [str(ROOT / "packaging" / "windows" / "launcher.py")],
@@ -34,6 +34,6 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,
+    console=False,
     icon=str(ICON),
 )
