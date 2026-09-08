@@ -21,7 +21,7 @@ class StartupChecks:
     def run(self) -> list[StartupCheck]:
         return [
             StartupCheck("python", sys.version_info >= (3, 10), platform.python_version()),
-            StartupCheck("platform", os.name == "nt", os.name),
+            StartupCheck("platform", os.name in {"nt", "posix"}, os.name),
             StartupCheck("writable_temp", self._writable_temp(), "temporary directory access"),
             StartupCheck("tkinter", importlib.util.find_spec("tkinter") is not None, "optional native GUI dependency"),
         ]
