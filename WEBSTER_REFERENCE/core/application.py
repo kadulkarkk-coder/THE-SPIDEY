@@ -1,4 +1,4 @@
-"""WEBSTER application runtime with the Sprint 6 intelligence layer."""
+"""WEBSTER application runtime with a functional lifecycle boundary."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -20,12 +20,13 @@ from ..intelligence.conversation_manager import ConversationManager
 from ..intelligence.decision_engine import DecisionEngine
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
+from ..runtime.runtime_manager import RuntimeManager
 
 
 class WebsterApplication:
-    """Dependency-free WEBSTER runtime with a modular intelligence foundation."""
+    """Functional WEBSTER runtime facade shared by desktop and packaged clients."""
 
-    VERSION = "0.1.0-alpha"
+    VERSION = "0.2.0-alpha"
 
     def __init__(self, config: WebsterConfig | None = None) -> None:
         self.config = config or WebsterConfig.from_environment()
@@ -42,6 +43,7 @@ class WebsterApplication:
         self.decision_engine = DecisionEngine()
         self.planning = PlanningEngine()
         self.progress = ProgressReporter()
+        self.runtime = RuntimeManager()
         self.started_at: datetime | None = None
         self._register_core_components()
         self._register_intelligence_services()
@@ -58,6 +60,7 @@ class WebsterApplication:
         self.components.register("lifecycle", self.lifecycle, "Application lifecycle")
         self.components.register("command_dispatcher", self.commands, "Command routing")
         self.components.register("request_pipeline", self.pipeline, "Unified request processing")
+        self.components.register("runtime", self.runtime, "Functional service lifecycle")
         self.services.register_service("diagnostics", self.diagnostics, "Runtime metrics")
 
     def _register_intelligence_services(self) -> None:
@@ -71,6 +74,7 @@ class WebsterApplication:
         self.commands.register("status", self._command_status)
         self.commands.register("diagnostics", self._command_diagnostics)
         self.commands.register("context", self._command_context)
+        self.commands.register("runtime", self._command_runtime)
         self.commands.register("ai", self._command_ai)
         self.commands.register("plan", self._command_plan)
         self.commands.register("exit", self._command_exit)
@@ -81,6 +85,7 @@ class WebsterApplication:
             return
         try:
             self.lifecycle.start()
+            self.runtime.start()
             self.started_at = datetime.now(timezone.utc)
             self.events.publish("system.started", {"version": self.VERSION, "session_id": self.context.session_id})
         except Exception as exc:
@@ -92,6 +97,7 @@ class WebsterApplication:
         if self.lifecycle.state is not LifecycleState.RUNNING:
             return
         self.events.publish("system.stopping")
+        self.runtime.stop()
         self.lifecycle.stop()
         self.events.publish("system.stopped")
 
@@ -102,10 +108,11 @@ class WebsterApplication:
             "environment": self.config.environment,
             "running": self.lifecycle.state is LifecycleState.RUNNING,
             "state": self.lifecycle.state.value,
+            "runtime_state": self.runtime.state.value,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 5 + 4,
+            "services": 9,
             "provider": self.decision_engine.provider.name,
             "healthy": self.health.is_healthy(),
         }
@@ -113,6 +120,7 @@ class WebsterApplication:
     def handle(self, request: CommandRequest) -> CommandResponse:
         """Run one request through intent, dispatch, execution, events, and metrics."""
         response = self.pipeline.process(request)
+        self.runtime.record_request(response.ok)
         self.events.publish(
             "command.completed" if response.ok else "command.failed",
             {"request_id": response.request_id, "ok": response.ok, "error_code": response.error_code},
@@ -138,15 +146,20 @@ class WebsterApplication:
     def _command_context(self, request: CommandRequest) -> str:
         return str(self.context.snapshot())
 
+    def _command_runtime(self, request: CommandRequest) -> str:
+        return str(self.runtime.snapshot())
+
     def _command_ai(self, request: CommandRequest) -> str:
-        prompt = request.text.split(maxsplit=1)[1] if len(request.text.split(maxsplit=1)) > 1 else ""
+        parts = request.text.split(maxsplit=1)
+        prompt = parts[1] if len(parts) > 1 else ""
         self.conversation.add("user", prompt or request.text)
         decision = self.decision_engine.decide(prompt)
         self.conversation.add("assistant", decision.rationale)
         return f"[{decision.provider}] {decision.rationale}"
 
     def _command_plan(self, request: CommandRequest) -> str:
-        goal = request.text.split(maxsplit=1)[1] if len(request.text.split(maxsplit=1)) > 1 else ""
+        parts = request.text.split(maxsplit=1)
+        goal = parts[1] if len(parts) > 1 else ""
         plan = self.planning.create_plan(goal)
         return str({"goal": plan.goal, "steps": [step.description for step in plan.steps]})
 
