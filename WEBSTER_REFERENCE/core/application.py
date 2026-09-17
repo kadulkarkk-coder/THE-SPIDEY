@@ -163,7 +163,7 @@ class WebsterApplication:
         current = prompt or request.text
         self.conversation.add("user", current)
         self.conversation_state.add("user", current)
-        built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().__dict__)
+        built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         decision = self.decision_engine.decide(self.context_builder.as_prompt(built))
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
