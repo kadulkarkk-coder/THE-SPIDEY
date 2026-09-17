@@ -23,15 +23,31 @@ This document tracks **working implementation**, not reference-module existence.
 - Runtime completion/failure events include request ID, status, error code, and duration.
 - Wired `WebsterApplication.handle()` through the bridge.
 - Exported the bridge from `runtime/__init__.py`.
-- Added `tests/test_runtime_request_bridge.py` for stopped-runtime rejection, success/failure accounting, and pipeline exception containment.
-- Added `tests/test_execution_boundary.py` for handler exception isolation.
+- Added request-boundary and execution-boundary tests.
 
-**Verification note:** A2 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed here.
+**A3 — COMPLETE**
+- Added a dependency-free `LocalKnowledge` responder for core identity, capabilities, time/date, and runtime-state questions.
+- Added a bounded AST-based local calculator with dangerous expression forms rejected.
+- Added `LocalProvider` and made it the default `DecisionEngine` provider.
+- Preserved `OfflineProvider` and the provider protocol for compatibility and optional provider adapters.
+- Added local-intelligence tests covering identity, arithmetic, unsafe-expression rejection, and provider replaceability.
+
+**A4 — COMPLETE**
+- Added `intelligence/conversation_state.py` for bounded, thread-safe session conversation state.
+- Added `intelligence/context_builder.py` to construct bounded request context from the current request, recent turns, and runtime metadata.
+- Added `intelligence/response_composer.py` for a structured response contract containing text, provider, confidence, action, review state, and suggestions.
+- Wired `WebsterApplication` to build context before local decision-making and compose structured responses afterward.
+- Extended `LocalProvider` to extract the current request from context and answer simple conversation-history requests locally.
+- Kept the legacy `ConversationManager` intact for compatibility while introducing the new contextual state service.
+- Added `tests/test_conversation_context_a4.py` for bounded history, context rendering, contextual recall, and response metadata.
+
+**Verification note:** A1–A4 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed here. Source was re-fetched after implementation to verify the A4 files and integration writes.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A2 of rebuild complete**
-- Legacy/reference roadmap: retained for compatibility; its earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A2 / rebuild restart**
+- Phase 0 Foundation: **A4 of rebuild complete**
+- Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
+- Current verified functional implementation: **A4 / rebuild restart**
+- Rebuild completion: **4 functional increments complete**
 
 ## Next rebuild target
-**A3 — Functional local intelligence boundary:** replace the echo-only fallback with a real local-first response pipeline, while keeping external AI providers optional adapters and preserving the no-hardcoded-key requirement.
+**A5 — Functional reasoning + intent routing:** connect the local conversation/context layer to WEBSTER's existing intent, entity, reasoning, constraint, and decision modules so responses can become task-aware instead of primarily conversational.
