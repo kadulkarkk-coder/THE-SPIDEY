@@ -18,11 +18,13 @@ This document tracks **working implementation**, not reference-module existence.
 - Requests are rejected cleanly while the runtime is stopped.
 - Running requests pass through the existing intent/dispatch/execution pipeline.
 - Unexpected failures are converted into stable `INTERNAL_RUNTIME_ERROR` responses at the final runtime boundary.
-- Runtime success/failure accounting is performed at one boundary.
+- Handler-level unexpected exceptions are isolated as `COMMAND_EXECUTION_ERROR` responses.
+- Runtime success/failure accounting is performed at one request boundary.
 - Runtime completion/failure events include request ID, status, error code, and duration.
 - Wired `WebsterApplication.handle()` through the bridge.
 - Exported the bridge from `runtime/__init__.py`.
-- Added `tests/test_runtime_a2.py` for stopped-runtime rejection, successful command dispatch, and unexpected pipeline failure.
+- Added `tests/test_runtime_request_bridge.py` for stopped-runtime rejection, success/failure accounting, and pipeline exception containment.
+- Added `tests/test_execution_boundary.py` for handler exception isolation.
 
 **Verification note:** A2 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed here.
 
