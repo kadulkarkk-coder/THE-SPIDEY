@@ -20,6 +20,7 @@ from ..intelligence.conversation_manager import ConversationManager
 from ..intelligence.decision_engine import DecisionEngine
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
+from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
 
 
@@ -44,6 +45,7 @@ class WebsterApplication:
         self.planning = PlanningEngine()
         self.progress = ProgressReporter()
         self.runtime = RuntimeManager()
+        self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
         self.started_at: datetime | None = None
         self._register_core_components()
         self._register_intelligence_services()
@@ -55,12 +57,14 @@ class WebsterApplication:
         self.health.register("lifecycle")
         self.health.register("command_dispatcher")
         self.health.register("request_pipeline")
+        self.health.register("runtime_request_bridge")
         self.components.register("event_bus", self.events, "In-process event bus")
         self.components.register("health_monitor", self.health, "Runtime health state")
         self.components.register("lifecycle", self.lifecycle, "Application lifecycle")
         self.components.register("command_dispatcher", self.commands, "Command routing")
         self.components.register("request_pipeline", self.pipeline, "Unified request processing")
         self.components.register("runtime", self.runtime, "Functional service lifecycle")
+        self.components.register("runtime_request_bridge", self.request_bridge, "Single client request boundary")
         self.services.register_service("diagnostics", self.diagnostics, "Runtime metrics")
 
     def _register_intelligence_services(self) -> None:
@@ -118,14 +122,8 @@ class WebsterApplication:
         }
 
     def handle(self, request: CommandRequest) -> CommandResponse:
-        """Run one request through intent, dispatch, execution, events, and metrics."""
-        response = self.pipeline.process(request)
-        self.runtime.record_request(response.ok)
-        self.events.publish(
-            "command.completed" if response.ok else "command.failed",
-            {"request_id": response.request_id, "ok": response.ok, "error_code": response.error_code},
-        )
-        return response
+        """Run one request through the single runtime request boundary."""
+        return self.request_bridge.submit(request)
 
     def command(self, text: str) -> str:
         """Backward-compatible text command API for the CLI."""
