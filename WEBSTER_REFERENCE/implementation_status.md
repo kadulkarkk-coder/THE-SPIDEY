@@ -6,48 +6,40 @@ This document tracks **working implementation**, not reference-module existence.
 ## Restart A — Functional Runtime Foundation
 
 **A1 — COMPLETE**
-- Added `runtime/runtime_state.py` for explicit runtime states and snapshots.
-- Added `runtime/runtime_manager.py` for deterministic service startup/shutdown, failure cleanup, request accounting, and resource-budget observation.
-- Added `runtime/startup_checks.py` for local prerequisite checks without network access or continuous polling.
-- Added `runtime/resource_guard.py` for on-demand lightweight resource observation.
+- Added explicit runtime states/snapshots, deterministic lifecycle management, startup checks, and lightweight resource observation.
 - Wired the runtime manager into `core/application.py`.
-- Added `tests/test_runtime_foundation.py` covering service ordering and application lifecycle.
 
 **A2 — COMPLETE**
-- Added `runtime/request_bridge.py` as the single request entry point for desktop, voice, remote, and test clients.
-- Requests are rejected cleanly while the runtime is stopped.
-- Running requests pass through the existing intent/dispatch/execution pipeline.
-- Unexpected failures are converted into stable `INTERNAL_RUNTIME_ERROR` responses at the final runtime boundary.
-- Handler-level unexpected exceptions are isolated as `COMMAND_EXECUTION_ERROR` responses.
-- Runtime success/failure accounting is performed at one request boundary.
-- Runtime completion/failure events include request ID, status, error code, and duration.
-- Wired `WebsterApplication.handle()` through the bridge.
-- Exported the bridge from `runtime/__init__.py`.
-- Added request-boundary and execution-boundary tests.
+- Added the single runtime request bridge for desktop, voice, remote, and test clients.
+- Added clean stopped-runtime rejection, request accounting, runtime events, and exception isolation.
 
 **A3 — COMPLETE**
-- Added a dependency-free `LocalKnowledge` responder for core identity, capabilities, time/date, and runtime-state questions.
-- Added a bounded AST-based local calculator with dangerous expression forms rejected.
-- Added `LocalProvider` and made it the default `DecisionEngine` provider.
-- Preserved `OfflineProvider` and the provider protocol for compatibility and optional provider adapters.
-- Added local-intelligence tests covering identity, arithmetic, unsafe-expression rejection, and provider replaceability.
+- Added dependency-free `LocalKnowledge` and a bounded AST calculator.
+- Added `LocalProvider` as the default `DecisionEngine` provider.
+- Preserved the provider protocol and `OfflineProvider` compatibility fallback.
 
 **A4 — COMPLETE**
-- Added `intelligence/conversation_state.py` for bounded, thread-safe session conversation state.
-- Added `intelligence/context_builder.py` to construct bounded request context from the current request, recent turns, and runtime metadata.
-- Added `intelligence/response_composer.py` for a structured response contract containing text, provider, confidence, action, review state, and suggestions.
-- Wired `WebsterApplication` to build context before local decision-making and compose structured responses afterward.
-- Extended `LocalProvider` to extract the current request from context and answer simple conversation-history requests locally.
-- Kept the legacy `ConversationManager` intact for compatibility while introducing the new contextual state service.
-- Added `tests/test_conversation_context_a4.py` for bounded history, context rendering, contextual recall, and response metadata.
+- Added bounded, thread-safe conversation state.
+- Added bounded context construction from current request, recent turns, and runtime metadata.
+- Added a structured response contract and contextual local response handling.
+- Wired conversation/context/response composition into the application.
 
-**Verification note:** A1–A4 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed here. Source was re-fetched after implementation to verify the A4 files and integration writes.
+**A5 — COMPLETE**
+- Added `intelligence/intent_router.py` to map detected intent to explicit downstream targets.
+- Added `intelligence/intent_pipeline.py` implementing `UNDERSTAND -> REASON -> CONSTRAIN -> ROUTE` without executing actions.
+- Connected the existing intent detection, entity extraction, reasoning, and constraint engines through the new pipeline.
+- Integrated A5 interpretation into `WebsterApplication` so each AI request is analyzed before response composition.
+- Extended `LocalProvider` to use intent/route metadata rather than relying only on generic conversational fallback.
+- Added A5 tests for question routing, entity extraction, constraints, and route explanations.
+- No files deleted; all changes are on `main`.
+
+**Verification note:** A1–A5 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A4 of rebuild complete**
+- Phase 0 Foundation: **A5 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A4 / rebuild restart**
-- Rebuild completion: **4 functional increments complete**
+- Current verified functional implementation: **A5 / rebuild restart**
+- Rebuild completion: **5 functional increments complete**
 
 ## Next rebuild target
-**A5 — Functional reasoning + intent routing:** connect the local conversation/context layer to WEBSTER's existing intent, entity, reasoning, constraint, and decision modules so responses can become task-aware instead of primarily conversational.
+**A6 — Functional task/action routing:** connect interpreted intents to the existing command, tool, permission, and planning boundaries so WEBSTER can safely move from understanding a request to selecting an executable capability.
