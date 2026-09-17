@@ -16,10 +16,13 @@ from .lifecycle import LifecycleManager, LifecycleState
 from .request_pipeline import RequestPipeline
 from .runtime_context import RuntimeContext
 from .service_registry import ServiceRegistry
+from ..intelligence.context_builder import ContextBuilder
 from ..intelligence.conversation_manager import ConversationManager
+from ..intelligence.conversation_state import ConversationState
 from ..intelligence.decision_engine import DecisionEngine
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
+from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
 
@@ -41,6 +44,9 @@ class WebsterApplication:
         self.commands = CommandDispatcher()
         self.pipeline = RequestPipeline(self.commands, self.diagnostics)
         self.conversation = ConversationManager()
+        self.conversation_state = ConversationState()
+        self.context_builder = ContextBuilder()
+        self.response_composer = ResponseComposer()
         self.decision_engine = DecisionEngine()
         self.planning = PlanningEngine()
         self.progress = ProgressReporter()
@@ -69,6 +75,9 @@ class WebsterApplication:
 
     def _register_intelligence_services(self) -> None:
         self.services.register_service("conversation", self.conversation, "Bounded conversation state")
+        self.services.register_service("conversation_state", self.conversation_state, "Bounded contextual session state")
+        self.services.register_service("context_builder", self.context_builder, "Bounded request context")
+        self.services.register_service("response_composer", self.response_composer, "Structured response composition")
         self.services.register_service("decision_engine", self.decision_engine, "Provider-backed decision boundary")
         self.services.register_service("planning", self.planning, "Explicit plan decomposition")
         self.services.register_service("progress", self.progress, "Observable task progress")
@@ -116,8 +125,9 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 9,
+            "services": 12,
             "provider": self.decision_engine.provider.name,
+            "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
         }
 
@@ -150,10 +160,20 @@ class WebsterApplication:
     def _command_ai(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         prompt = parts[1] if len(parts) > 1 else ""
-        self.conversation.add("user", prompt or request.text)
-        decision = self.decision_engine.decide(prompt)
-        self.conversation.add("assistant", decision.rationale)
-        return f"[{decision.provider}] {decision.rationale}"
+        current = prompt or request.text
+        self.conversation.add("user", current)
+        self.conversation_state.add("user", current)
+        built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().__dict__)
+        decision = self.decision_engine.decide(self.context_builder.as_prompt(built))
+        composed = self.response_composer.compose(decision)
+        self.conversation.add("assistant", composed.text)
+        self.conversation_state.add("assistant", composed.text)
+        self.events.publish("intelligence.response.composed", {
+            "provider": composed.provider,
+            "confidence": composed.confidence,
+            "requires_review": composed.requires_review,
+        })
+        return composed.text
 
     def _command_plan(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
