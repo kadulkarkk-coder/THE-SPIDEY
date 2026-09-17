@@ -20,6 +20,7 @@ from ..intelligence.context_builder import ContextBuilder
 from ..intelligence.conversation_manager import ConversationManager
 from ..intelligence.conversation_state import ConversationState
 from ..intelligence.decision_engine import DecisionEngine
+from ..intelligence.intent_pipeline import IntelligencePipeline
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
 from ..intelligence.response_composer import ResponseComposer
@@ -46,6 +47,7 @@ class WebsterApplication:
         self.conversation = ConversationManager()
         self.conversation_state = ConversationState()
         self.context_builder = ContextBuilder()
+        self.intelligence = IntelligencePipeline()
         self.response_composer = ResponseComposer()
         self.decision_engine = DecisionEngine()
         self.planning = PlanningEngine()
@@ -77,8 +79,9 @@ class WebsterApplication:
         self.services.register_service("conversation", self.conversation, "Bounded conversation state")
         self.services.register_service("conversation_state", self.conversation_state, "Bounded contextual session state")
         self.services.register_service("context_builder", self.context_builder, "Bounded request context")
+        self.services.register_service("intelligence", self.intelligence, "Intent, entity, reasoning and constraint pipeline")
         self.services.register_service("response_composer", self.response_composer, "Structured response composition")
-        self.services.register_service("decision_engine", self.decision_engine, "Provider-backed decision boundary")
+        self.services.register_service("decision_engine", self.decision_engine, "Local-first decision boundary")
         self.services.register_service("planning", self.planning, "Explicit plan decomposition")
         self.services.register_service("progress", self.progress, "Observable task progress")
 
@@ -125,18 +128,16 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 12,
+            "services": 13,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
         }
 
     def handle(self, request: CommandRequest) -> CommandResponse:
-        """Run one request through the single runtime request boundary."""
         return self.request_bridge.submit(request)
 
     def command(self, text: str) -> str:
-        """Backward-compatible text command API for the CLI."""
         response = self.handle(CommandRequest(text))
         if response.ok:
             return response.message
@@ -164,14 +165,18 @@ class WebsterApplication:
         self.conversation.add("user", current)
         self.conversation_state.add("user", current)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
+        interpretation = self.intelligence.interpret(current)
         decision = self.decision_engine.decide(self.context_builder.as_prompt(built))
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
         self.conversation_state.add("assistant", composed.text)
+        self.events.publish("intelligence.interpreted", interpretation.as_dict())
         self.events.publish("intelligence.response.composed", {
             "provider": composed.provider,
             "confidence": composed.confidence,
             "requires_review": composed.requires_review,
+            "intent": interpretation.intent,
+            "target": interpretation.target,
         })
         return composed.text
 
