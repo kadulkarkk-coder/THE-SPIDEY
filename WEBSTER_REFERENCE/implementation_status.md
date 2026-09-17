@@ -13,12 +13,23 @@ This document tracks **working implementation**, not reference-module existence.
 - Wired the runtime manager into `core/application.py`.
 - Added `tests/test_runtime_foundation.py` covering service ordering and application lifecycle.
 
-**Important:** A1 does not claim that the AI, GUI, camera, gestures, voice, or remote client are finished. Those are separate functional vertical slices and will only be marked complete after they work end-to-end.
+**A2 — COMPLETE**
+- Added `runtime/request_bridge.py` as the single request entry point for desktop, voice, remote, and test clients.
+- Requests are rejected cleanly while the runtime is stopped.
+- Running requests pass through the existing intent/dispatch/execution pipeline.
+- Unexpected failures are converted into stable `INTERNAL_RUNTIME_ERROR` responses at the final runtime boundary.
+- Runtime success/failure accounting is performed at one boundary.
+- Runtime completion/failure events include request ID, status, error code, and duration.
+- Wired `WebsterApplication.handle()` through the bridge.
+- Exported the bridge from `runtime/__init__.py`.
+- Added `tests/test_runtime_a2.py` for stopped-runtime rejection, successful command dispatch, and unexpected pipeline failure.
+
+**Verification note:** A2 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed here.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A1 of rebuild complete**
+- Phase 0 Foundation: **A2 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; its earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A1 / rebuild restart**
+- Current verified functional implementation: **A2 / rebuild restart**
 
 ## Next rebuild target
-**A2 — Functional command/runtime bridge:** make the runtime request path the single dependable execution boundary, add structured runtime events/errors, and verify it against real command execution before moving to the AI/UI slices.
+**A3 — Functional local intelligence boundary:** replace the echo-only fallback with a real local-first response pipeline, while keeping external AI providers optional adapters and preserving the no-hardcoded-key requirement.
