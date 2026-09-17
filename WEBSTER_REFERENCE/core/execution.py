@@ -15,7 +15,7 @@ class ExecutionResult:
 
 
 class ExecutionBoundary:
-    """Executes approved callables and converts expected failures to responses."""
+    """Executes approved callables and converts failures to stable responses."""
 
     def execute(
         self,
@@ -30,4 +30,13 @@ class ExecutionBoundary:
         except WebsterError as exc:
             return ExecutionResult(
                 CommandResponse.failure(request, str(exc), exc.__class__.__name__.upper())
+            )
+        except Exception:
+            # Never leak an implementation exception into a desktop/voice client.
+            return ExecutionResult(
+                CommandResponse.failure(
+                    request,
+                    "The command failed inside the execution boundary.",
+                    "COMMAND_EXECUTION_ERROR",
+                )
             )
