@@ -21,6 +21,8 @@ class AIProvider(Protocol):
 
 
 class OfflineProvider:
+    """Compatibility fallback retained for callers that explicitly request it."""
+
     name = "offline"
 
     def generate(self, prompt: str) -> ProviderResponse:
@@ -48,7 +50,10 @@ class DecisionEngine:
     def __init__(self, provider: AIProvider | None = None, *, review_threshold: float = 0.5) -> None:
         if not 0.0 <= review_threshold <= 1.0:
             raise ValueError("review_threshold must be between 0 and 1")
-        self.provider = provider or OfflineProvider()
+        if provider is None:
+            from .local_provider import LocalProvider
+            provider = LocalProvider()
+        self.provider = provider
         self.review_threshold = review_threshold
 
     def decide(self, prompt: str) -> Decision:
