@@ -34,6 +34,8 @@ from ..intelligence.conversation_memory import ConversationMemoryStore
 from ..intelligence.memory_reference_resolver import MemoryReferenceResolver
 from ..intelligence.conversation_continuity import ConversationContinuity
 from ..intelligence.entity_context import EntityContext
+from ..intelligence.content_file_index import ContentFileIndex
+from ..intelligence.file_search_intent import FileSearchIntentParser
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -71,6 +73,8 @@ class WebsterApplication:
         self.reference_resolver = MemoryReferenceResolver(self.task_memory, self.conversation_memory)
         self.continuity = ConversationContinuity(self.task_memory)
         self.entity_context = EntityContext()
+        self.file_index = ContentFileIndex.from_environment()
+        self.file_search_intent = FileSearchIntentParser()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -113,6 +117,7 @@ class WebsterApplication:
         self.services.register_service("reference_resolver", self.reference_resolver, "Session-scoped memory reference resolution")
         self.services.register_service("continuity", self.continuity, "Reference-aware follow-up continuity")
         self.services.register_service("entity_context", self.entity_context, "Session-local persistent conversational references")
+        self.services.register_service("file_index", self.file_index, "Background content index for approved local files")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -156,6 +161,7 @@ class WebsterApplication:
         try:
             self.lifecycle.start()
             self.runtime.start()
+            self.file_index.start_background_refresh()
             self.started_at = datetime.now(timezone.utc)
             self.events.publish("system.started", {"version": self.VERSION, "session_id": self.context.session_id})
         except Exception as exc:
@@ -167,6 +173,7 @@ class WebsterApplication:
         if self.lifecycle.state is not LifecycleState.RUNNING:
             return
         self.events.publish("system.stopping")
+        self.file_index.stop_background_refresh()
         self.runtime.stop()
         self.lifecycle.stop()
         self.events.publish("system.stopped")
@@ -182,7 +189,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 21,
+            "services": 22,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -224,6 +231,31 @@ class WebsterApplication:
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         reference = self.reference_resolver.resolve(current, self.context.session_id)
+        file_intent = self.file_search_intent.parse(current)
+        if file_intent.is_search:
+            results = self.file_index.search(file_intent.query, limit=file_intent.limit)
+            if results:
+                response_text = (
+                    'I searched file contents for "' + file_intent.query + '": '
+                    + " | ".join(
+                        f"{index}. {item.path} — {item.excerpt}"
+                        for index, item in enumerate(results, 1)
+                    )
+                )
+            else:
+                response_text = (
+                    'I could not find a content match for "' + file_intent.query + '". '
+                    + f"Indexed {self.file_index.indexed_count()} approved text files."
+                )
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            self.events.publish("files.content_searched", {
+                "query": file_intent.query,
+                "results": len(results),
+                "indexed_files": self.file_index.indexed_count(),
+            })
+            return response_text
         continuity = self.continuity.resolve(current, self.context.session_id)
         self.entity_context.observe(current)
         if continuity.resolved and continuity.intent == "recall_result":
