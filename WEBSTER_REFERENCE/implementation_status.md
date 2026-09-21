@@ -105,13 +105,24 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A13 tests for multi-turn retention, unknown-reference safety, and explicit invalidation.
 - No files deleted; all changes are on `main`.
 
+**A14 — COMPLETE**
+- Added `intelligence/content_file_index.py` for local, content-first file indexing.
+- WEBSTER reads approved text files in a bounded background pass and keeps compact content metadata locally.
+- File search ranks matches from file contents and excerpts; filenames are not used as the primary search signal.
+- Added `intelligence/file_search_intent.py` so requests such as “find a file about photosynthesis” become content queries rather than filename searches.
+- Wired the content index into the application lifecycle and AI request path.
+- File roots are explicit via `WEBSTER_FILE_ROOTS`, keeping background scanning permission-aware and avoiding an uncontrolled whole-disk scan.
+- Background indexing is one bounded pass rather than a permanent polling loop to keep resource usage low.
+- Added A14 tests for content-first matching and natural-language file-search parsing.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A13 / rebuild restart**
-- Rebuild completion: **13 functional increments complete**
+- Current verified functional implementation: **A14 / rebuild restart**
+- Rebuild completion: **14 functional increments complete**
 
 ## Next rebuild target
-**A14 — Natural language reference binding:** resolve “that”, “the previous one”, “the first result”, and related references against explicit context rather than only the latest numeric result.
+**Next rebuild target: A15 — Long multi-turn reasoning:** carry goals, entities, results, constraints, and task state across longer conversations without mixing unrelated context.
