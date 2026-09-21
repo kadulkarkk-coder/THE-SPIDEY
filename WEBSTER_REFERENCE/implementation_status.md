@@ -33,10 +33,19 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A5 tests for question routing, entity extraction, constraints, and route explanations.
 - No files deleted; all changes are on `main`.
 
+**A6 — COMPLETE**
+- Added `intelligence/action_router.py` to turn A5 interpretations into executable command/tool selections.
+- Connected the router to the existing tool registry/dispatcher and explicit capability permissions.
+- Added confirmation gating before any tool marked as requiring confirmation.
+- Added safe local calculator and local-time tools to the application runtime.
+- Routed help/status targets through direct command handlers without recursively re-entering the request bridge.
+- Added A6 action-routing tests for calculator execution, time execution, and command routing.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A5 of rebuild complete**
+- Phase 0 Foundation: **A6 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
 - Current verified functional implementation: **A6 / rebuild restart**
 - Rebuild completion: **6 functional increments complete**
