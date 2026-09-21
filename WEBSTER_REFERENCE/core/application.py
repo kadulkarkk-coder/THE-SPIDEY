@@ -218,6 +218,25 @@ class WebsterApplication:
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         reference = self.reference_resolver.resolve(current, self.context.session_id)
+        if reference.resolved and reference.intent == "recall_task":
+            response_text = "Earlier, the task was: " + reference.goal
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            return response_text
+        if reference.resolved and reference.intent == "recall_conversation":
+            response_text = "I found this relevant earlier conversation: " + reference.goal
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            return response_text
+        if reference.resolved and reference.intent in {"repeat_task", "continue_task"}:
+            task = self.task_executor.execute(reference.goal, task_id=request.request_id or None, session_id=self.context.session_id)
+            response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "referenced_task_id": reference.task_id, "intent": reference.intent, "results": [item.message for item in task.results], "error": task.error or None})
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            return response_text
         if " then " in current.lower():
             task = self.task_executor.execute(current, task_id=request.request_id or None, session_id=self.context.session_id)
             response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None})
