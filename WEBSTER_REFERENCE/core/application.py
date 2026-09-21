@@ -21,6 +21,10 @@ from ..intelligence.conversation_manager import ConversationManager
 from ..intelligence.conversation_state import ConversationState
 from ..intelligence.decision_engine import DecisionEngine
 from ..intelligence.intent_pipeline import IntelligencePipeline
+from ..intelligence.action_router import ActionRouter
+from ..tools.tool_contract import ToolBinding, ToolSpec
+from ..tools.tool_dispatcher import ToolDispatcher
+from ..tools.tool_registry import ToolRegistry
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
 from ..intelligence.response_composer import ResponseComposer
@@ -51,12 +55,16 @@ class WebsterApplication:
         self.response_composer = ResponseComposer()
         self.decision_engine = DecisionEngine()
         self.planning = PlanningEngine()
+        self.tool_registry = ToolRegistry()
+        self.tool_dispatcher = ToolDispatcher(self.tool_registry)
+        self.action_router = ActionRouter(command_handler=self._action_command, tool_dispatcher=self.tool_dispatcher)
         self.progress = ProgressReporter()
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
         self.started_at: datetime | None = None
         self._register_core_components()
         self._register_intelligence_services()
+        self._register_action_tools()
         self._register_commands()
 
     def _register_core_components(self) -> None:
@@ -84,6 +92,29 @@ class WebsterApplication:
         self.services.register_service("decision_engine", self.decision_engine, "Local-first decision boundary")
         self.services.register_service("planning", self.planning, "Explicit plan decomposition")
         self.services.register_service("progress", self.progress, "Observable task progress")
+
+    def _register_action_tools(self) -> None:
+        from datetime import datetime
+
+        self.tool_registry.register(
+            ToolBinding(
+                ToolSpec("calculator", "Safe local arithmetic", frozenset({"local.compute"})),
+                __import__("WEBSTER_REFERENCE.intelligence.local_calculator", fromlist=["calculate"]).calculate,
+            )
+        )
+        self.tool_registry.register(
+            ToolBinding(
+                ToolSpec("time", "Current local time", frozenset({"runtime.read"})),
+                lambda: datetime.now().astimezone().strftime("%H:%M:%S"),
+            )
+        )
+
+    def _action_command(self, name: str) -> str:
+        if name == "help":
+            return self._command_help(CommandRequest("help"))
+        if name == "status":
+            return self._command_status(CommandRequest("status"))
+        return "Unsupported action command."
 
     def _register_commands(self) -> None:
         self.commands.register("help", self._command_help)
@@ -166,6 +197,22 @@ class WebsterApplication:
         self.conversation_state.add("user", current)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
+        action = self.action_router.route(interpretation, request_id=request.request_id)
+        if action.handled:
+            if action.ok:
+                response_text = action.message
+            else:
+                response_text = action.message
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.events.publish("intelligence.interpreted", interpretation.as_dict())
+            self.events.publish("action.routed", {
+                "target": action.target,
+                "kind": action.kind,
+                "ok": action.ok,
+                "request_id": request.request_id,
+            })
+            return response_text
         decision = self.decision_engine.decide(self.context_builder.as_prompt(built))
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
