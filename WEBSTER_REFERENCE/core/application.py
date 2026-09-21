@@ -31,6 +31,7 @@ from ..intelligence.progress_reporter import ProgressReporter
 from ..intelligence.task_executor import TaskExecutor
 from ..intelligence.task_memory import TaskMemoryStore
 from ..intelligence.conversation_memory import ConversationMemoryStore
+from ..intelligence.memory_reference_resolver import MemoryReferenceResolver
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -65,6 +66,7 @@ class WebsterApplication:
         self.progress = ProgressReporter()
         self.task_memory = TaskMemoryStore()
         self.conversation_memory = ConversationMemoryStore()
+        self.reference_resolver = MemoryReferenceResolver(self.task_memory, self.conversation_memory)
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -104,6 +106,7 @@ class WebsterApplication:
         self.services.register_service("task_executor", self.task_executor, "Verified multi-step task execution")
         self.services.register_service("task_memory", self.task_memory, "Persistent local task outcomes")
         self.services.register_service("conversation_memory", self.conversation_memory, "Persistent local conversation recall")
+        self.services.register_service("reference_resolver", self.reference_resolver, "Session-scoped memory reference resolution")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -173,7 +176,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 18,
+            "services": 19,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -210,12 +213,13 @@ class WebsterApplication:
         self.conversation.add("user", current)
         self.conversation_state.add("user", current)
         self.conversation_memory.remember(self.context.session_id, "user", current)
-        memory_context = self.task_memory.summary(current)
+        memory_context = self.task_memory.summary(current, self.context.session_id)
         conversation_context = self.conversation_memory.context(current, self.context.session_id)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
+        reference = self.reference_resolver.resolve(current, self.context.session_id)
         if " then " in current.lower():
-            task = self.task_executor.execute(current, task_id=request.request_id or None)
+            task = self.task_executor.execute(current, task_id=request.request_id or None, session_id=self.context.session_id)
             response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None})
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
