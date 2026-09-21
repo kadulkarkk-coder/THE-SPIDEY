@@ -42,13 +42,22 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A6 action-routing tests for calculator execution, time execution, and command routing.
 - No files deleted; all changes are on `main`.
 
+**A7 — COMPLETE**
+- Added `intelligence/task_executor.py` for deterministic multi-step execution using plan dependencies.
+- Connected planning to the existing action router instead of bypassing permission/tool boundaries.
+- Added progress reporting for task start, active steps, completion, and failure.
+- Added explicit `run` command support and natural-language `then` chaining for multi-step tasks.
+- Stops safely on the first failed step and reports completed/failed state.
+- Added A7 tests for dependency-respecting execution and failure stopping.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A6 of rebuild complete**
+- Phase 0 Foundation: **A7 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A6 / rebuild restart**
-- Rebuild completion: **6 functional increments complete**
+- Current verified functional implementation: **A7 / rebuild restart**
+- Rebuild completion: **7 functional increments complete**
 
 ## Next rebuild target
-**A7 — Functional planning and multi-step task execution:** connect routed actions to inspectable plans, progress, dependencies, and verified execution.
+**A8 — Functional memory-backed task continuity:** persist task outcomes/context and use them safely in subsequent requests.
