@@ -29,6 +29,7 @@ from ..tools.tool_registry import ToolRegistry
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
 from ..intelligence.task_executor import TaskExecutor
+from ..intelligence.task_memory import TaskMemoryStore
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -61,7 +62,8 @@ class WebsterApplication:
         self.tool_dispatcher = ToolDispatcher(self.tool_registry)
         self.action_router = ActionRouter(command_handler=self._action_command, tool_dispatcher=self.tool_dispatcher)
         self.progress = ProgressReporter()
-        self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress)
+        self.task_memory = TaskMemoryStore()
+        self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
         self.started_at: datetime | None = None
@@ -98,6 +100,7 @@ class WebsterApplication:
         self.services.register_service("tool_dispatcher", self.tool_dispatcher, "Registered executable tools")
         self.services.register_service("action_router", self.action_router, "Intent-to-action routing")
         self.services.register_service("task_executor", self.task_executor, "Verified multi-step task execution")
+        self.services.register_service("task_memory", self.task_memory, "Persistent local task outcomes")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -131,6 +134,7 @@ class WebsterApplication:
         self.commands.register("ai", self._command_ai)
         self.commands.register("plan", self._command_plan)
         self.commands.register("run", self._command_run)
+        self.commands.register("memory", self._command_memory)
         self.commands.register("exit", self._command_exit)
         self.commands.register("quit", self._command_exit)
 
@@ -166,7 +170,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 16,
+            "services": 17,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -202,6 +206,7 @@ class WebsterApplication:
         current = prompt or request.text
         self.conversation.add("user", current)
         self.conversation_state.add("user", current)
+        memory_context = self.task_memory.summary(current)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         if " then " in current.lower():
@@ -228,7 +233,7 @@ class WebsterApplication:
                 "request_id": request.request_id,
             })
             return response_text
-        decision = self.decision_engine.decide(self.context_builder.as_prompt(built))
+        decision = self.decision_engine.decide(self.context_builder.as_prompt(built) + "\nRelevant task memory: " + str(memory_context))
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
         self.conversation_state.add("assistant", composed.text)
@@ -242,6 +247,10 @@ class WebsterApplication:
         })
         return composed.text
 
+    def _command_memory(self, request: CommandRequest) -> str:
+        parts = request.text.split(maxsplit=1)
+        query = parts[1] if len(parts) > 1 else ""
+        return str(self.task_memory.summary(query))
     def _command_run(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         goal = parts[1] if len(parts) > 1 else ""
