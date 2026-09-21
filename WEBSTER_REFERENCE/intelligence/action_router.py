@@ -27,7 +27,7 @@ class ActionRouter:
     """Turns an interpretation into an executable command/tool only when safe."""
     _TOOL_PATTERNS = (
         (re.compile(r"^\s*(?:calculate|calc)\s+(.+)$", re.I), "calculator"),
-        (re.compile(r"^\s*(?:what is the )?(?:current )?time\??\s*$", re.I), "time"),
+        (re.compile(r"^\s*(?:(?:what time is it)|(?:what is the (?:current )?time)|(?:current time))\??\s*$", re.I), "time"),
     )
 
     def __init__(self, command_handler: Callable[[str], str] | None = None, tool_dispatcher: ToolDispatcher | None = None, permissions: ToolPermissionPolicy | None = None, confirmation: ToolConfirmationGate | None = None) -> None:
