@@ -79,13 +79,21 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A10 tests for repeat, recall, continuation, and cross-session isolation.
 - No files deleted; all changes are on `main`.
 
+**A11 — COMPLETE**
+- Added confidence-aware contextual disambiguation to `intelligence/memory_reference_resolver.py`.
+- Memory references are now ranked using task/session evidence instead of blindly selecting the latest record.
+- Generic references with multiple equally plausible tasks now produce a clarification request.
+- Specific references with a clear lexical match continue automatically.
+- Clarification candidates are limited to the active session.
+- Added A11 tests for ambiguity, clear matching, and foreign-session isolation.
+- No files deleted; all changes are on `main`.
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A10 of rebuild complete**
+- Phase 0 Foundation: **A11 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A10 / rebuild restart**
-- Rebuild completion: **10 functional increments complete**
+- Current verified functional implementation: **A11 / rebuild restart**
+- Rebuild completion: **11 functional increments complete**
 
 ## Next rebuild target
-**A11 — Memory confidence and contextual disambiguation:** distinguish multiple plausible prior tasks and ask for clarification instead of guessing.
+**A12 — Reference-aware conversational continuity:** carry resolved entities and selected memories across multi-turn follow-ups without losing session boundaries.
