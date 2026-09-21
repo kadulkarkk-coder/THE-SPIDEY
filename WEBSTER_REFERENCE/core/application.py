@@ -32,6 +32,7 @@ from ..intelligence.task_executor import TaskExecutor
 from ..intelligence.task_memory import TaskMemoryStore
 from ..intelligence.conversation_memory import ConversationMemoryStore
 from ..intelligence.memory_reference_resolver import MemoryReferenceResolver
+from ..intelligence.conversation_continuity import ConversationContinuity
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -67,6 +68,7 @@ class WebsterApplication:
         self.task_memory = TaskMemoryStore()
         self.conversation_memory = ConversationMemoryStore()
         self.reference_resolver = MemoryReferenceResolver(self.task_memory, self.conversation_memory)
+        self.continuity = ConversationContinuity(self.task_memory)
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -107,6 +109,7 @@ class WebsterApplication:
         self.services.register_service("task_memory", self.task_memory, "Persistent local task outcomes")
         self.services.register_service("conversation_memory", self.conversation_memory, "Persistent local conversation recall")
         self.services.register_service("reference_resolver", self.reference_resolver, "Session-scoped memory reference resolution")
+        self.services.register_service("continuity", self.continuity, "Reference-aware follow-up continuity")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -176,7 +179,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 19,
+            "services": 20,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -218,6 +221,20 @@ class WebsterApplication:
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         reference = self.reference_resolver.resolve(current, self.context.session_id)
+        continuity = self.continuity.resolve(current, self.context.session_id)
+        if continuity.resolved and continuity.intent == "recall_result":
+            response_text = "The result was: " + continuity.text
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            return response_text
+        if continuity.resolved and continuity.intent == "followup_calculation":
+            result = self.task_executor.execute("calculate " + continuity.text, task_id=request.request_id or None, session_id=self.context.session_id)
+            response_text = str({"task_id": result.task_id, "status": "completed" if result.ok else "failed", "results": [item.message for item in result.results], "error": result.error or None, "referenced_task_id": continuity.source_task_id})
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            return response_text
         if reference.intent == "clarify_task":
             options = [f"{index}. {item.goal}" for index, item in enumerate(reference.candidates, 1)]
             response_text = "I found multiple plausible previous tasks. Which one do you mean? " + " | ".join(options)
