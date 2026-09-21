@@ -22,6 +22,7 @@ from ..intelligence.conversation_state import ConversationState
 from ..intelligence.decision_engine import DecisionEngine
 from ..intelligence.intent_pipeline import IntelligencePipeline
 from ..intelligence.action_router import ActionRouter
+from ..intelligence.local_calculator import calculate
 from ..tools.tool_contract import ToolBinding, ToolSpec
 from ..tools.tool_dispatcher import ToolDispatcher
 from ..tools.tool_registry import ToolRegistry
@@ -92,6 +93,8 @@ class WebsterApplication:
         self.services.register_service("decision_engine", self.decision_engine, "Local-first decision boundary")
         self.services.register_service("planning", self.planning, "Explicit plan decomposition")
         self.services.register_service("progress", self.progress, "Observable task progress")
+        self.services.register_service("tool_dispatcher", self.tool_dispatcher, "Registered executable tools")
+        self.services.register_service("action_router", self.action_router, "Intent-to-action routing")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -99,7 +102,7 @@ class WebsterApplication:
         self.tool_registry.register(
             ToolBinding(
                 ToolSpec("calculator", "Safe local arithmetic", frozenset({"local.compute"})),
-                __import__("WEBSTER_REFERENCE.intelligence.local_calculator", fromlist=["calculate"]).calculate,
+                calculate,
             )
         )
         self.tool_registry.register(
@@ -159,7 +162,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 13,
+            "services": 15,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
