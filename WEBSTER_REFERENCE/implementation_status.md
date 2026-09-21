@@ -87,13 +87,22 @@ This document tracks **working implementation**, not reference-module existence.
 - Clarification candidates are limited to the active session.
 - Added A11 tests for ambiguity, clear matching, and foreign-session isolation.
 - No files deleted; all changes are on `main`.
+**A12 — COMPLETE**
+- Added `intelligence/conversation_continuity.py` for short follow-up resolution.
+- WEBSTER can now carry the latest active-session numeric result into follow-ups such as “What was the result?” and “multiply it by 3”.
+- Follow-up calculations are routed back through the normal task executor and calculator/tool pipeline.
+- Session boundaries are preserved; another session cannot supply the referenced result.
+- Non-numeric task results are not guessed or converted into calculations.
+- Added A12 tests for result recall, pronoun-based calculation, session isolation, and non-numeric safety.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A11 of rebuild complete**
+- Phase 0 Foundation: **A12 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A11 / rebuild restart**
-- Rebuild completion: **11 functional increments complete**
+- Current verified functional implementation: **A12 / rebuild restart**
+- Rebuild completion: **12 functional increments complete**
 
 ## Next rebuild target
-**A12 — Reference-aware conversational continuity:** carry resolved entities and selected memories across multi-turn follow-ups without losing session boundaries.
+**A13 — Persistent conversational entities and multi-turn context:** retain selected references beyond a single follow-up and expire them safely when context changes.
