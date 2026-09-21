@@ -51,13 +51,22 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A7 tests for dependency-respecting execution and failure stopping.
 - No files deleted; all changes are on `main`.
 
+**A8 — COMPLETE**
+- Added `intelligence/task_memory.py` with bounded local JSON persistence for task outcomes.
+- Added atomic file replacement and bounded history to avoid unbounded disk growth.
+- Connected `TaskExecutor` to persist completed and failed task results.
+- Added memory retrieval/search and a `memory` command.
+- Injected relevant task-memory summaries into local AI context for subsequent requests.
+- Added A8 persistence and retention tests.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A7 of rebuild complete**
+- Phase 0 Foundation: **A8 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A7 / rebuild restart**
-- Rebuild completion: **7 functional increments complete**
+- Current verified functional implementation: **A8 / rebuild restart**
+- Rebuild completion: **8 functional increments complete**
 
 ## Next rebuild target
-**A8 — Functional memory-backed task continuity:** persist task outcomes/context and use them safely in subsequent requests.
+**A9 — Functional persistent conversation memory:** connect bounded conversational history and task memory into explicit recall/retrieval behavior.
