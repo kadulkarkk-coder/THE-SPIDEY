@@ -121,8 +121,18 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A14 / rebuild restart**
-- Rebuild completion: **14 functional increments complete**
+- Current verified functional implementation: **A15 / rebuild restart**
+- Rebuild completion: **15 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A15 — Long multi-turn reasoning:** carry goals, entities, results, constraints, and task state across longer conversations without mixing unrelated context.
+**Next rebuild target: A16 — Local knowledge and retrieval:** make WEBSTER retrieve useful local knowledge and documents by meaning/content rather than only keyword matches.
+
+**A15 — COMPLETE**
+- Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
+- WEBSTER now keeps an active goal, relevant entities, constraints, recent results, task IDs, intent, target, and recent reasoning turns together.
+- Context is session-local, TTL-bounded, size-bounded, and never mixed across sessions.
+- Natural references include the active goal and recent result context.
+- Integrated the reasoning context into the local decision prompt.
+- Added lightweight goal/constraint extraction so follow-up turns can retain what the user is trying to accomplish.
+- Added A15 tests for long-turn retention, session isolation, and bounded prompts.
+- No files deleted; all changes are on `main`.
