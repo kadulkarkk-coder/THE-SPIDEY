@@ -60,13 +60,21 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A8 persistence and retention tests.
 - No files deleted; all changes are on `main`.
 
+**A9 — COMPLETE**
+- Added `intelligence/conversation_memory.py` with bounded persistent local conversation history.
+- Added relevance search scoped to the active WEBSTER session.
+- Connected user and assistant turns to persistent conversation storage.
+- Added conversation recall context to local AI responses.
+- Added A9 persistence and bounded-history tests.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A8 of rebuild complete**
+- Phase 0 Foundation: **A9 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A8 / rebuild restart**
-- Rebuild completion: **8 functional increments complete**
+- Current verified functional implementation: **A9 / rebuild restart**
+- Rebuild completion: **9 functional increments complete**
 
 ## Next rebuild target
-**A9 — Functional persistent conversation memory:** connect bounded conversational history and task memory into explicit recall/retrieval behavior.
+**A10 — Functional memory-aware follow-up reasoning:** resolve references to prior turns/tasks and use retrieved memory without confusing unrelated history.
