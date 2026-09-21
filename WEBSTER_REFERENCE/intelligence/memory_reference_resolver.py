@@ -52,7 +52,7 @@ class MemoryReferenceResolver:
 
     def _best_task(self, session_id: str, completed_only: bool = False) -> TaskMemory | None:
         for task in reversed(self.tasks.recent(20)):
-            if task.session_id and task.session_id != session_id:
+            if task.session_id != session_id:
                 continue
             if completed_only and task.status != "completed":
                 continue
