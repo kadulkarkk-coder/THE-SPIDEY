@@ -218,6 +218,14 @@ class WebsterApplication:
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         reference = self.reference_resolver.resolve(current, self.context.session_id)
+        if reference.intent == "clarify_task":
+            options = [f"{index}. {item.goal}" for index, item in enumerate(reference.candidates, 1)]
+            response_text = "I found multiple plausible previous tasks. Which one do you mean? " + " | ".join(options)
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            self.events.publish("memory.reference.clarification", {"candidates": [item.task_id for item in reference.candidates], "confidence": reference.confidence})
+            return response_text
         if reference.resolved and reference.intent == "recall_task":
             response_text = "Earlier, the task was: " + reference.goal
             self.conversation.add("assistant", response_text)
