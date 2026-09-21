@@ -36,6 +36,7 @@ from ..intelligence.conversation_continuity import ConversationContinuity
 from ..intelligence.entity_context import EntityContext
 from ..intelligence.content_file_index import ContentFileIndex
 from ..intelligence.file_search_intent import FileSearchIntentParser
+from ..intelligence.multi_turn_reasoning import MultiTurnReasoning
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -75,6 +76,7 @@ class WebsterApplication:
         self.entity_context = EntityContext()
         self.file_index = ContentFileIndex.from_environment()
         self.file_search_intent = FileSearchIntentParser()
+        self.multi_turn_reasoning = MultiTurnReasoning()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -118,6 +120,7 @@ class WebsterApplication:
         self.services.register_service("continuity", self.continuity, "Reference-aware follow-up continuity")
         self.services.register_service("entity_context", self.entity_context, "Session-local persistent conversational references")
         self.services.register_service("file_index", self.file_index, "Background content index for approved local files")
+        self.services.register_service("multi_turn_reasoning", self.multi_turn_reasoning, "Bounded session-local long-turn reasoning context")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -189,7 +192,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 22,
+            "services": 23,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -230,6 +233,14 @@ class WebsterApplication:
         conversation_context = self.conversation_memory.context(current, self.context.session_id)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
+        self.multi_turn_reasoning.observe(
+            self.context.session_id,
+            role="user",
+            text=current,
+            intent=interpretation.intent,
+            target=interpretation.target,
+            entities={key: str(value) for key, value in self.entity_context.snapshot().items()},
+        )
         reference = self.reference_resolver.resolve(current, self.context.session_id)
         file_intent = self.file_search_intent.parse(current)
         if file_intent.is_search:
@@ -330,7 +341,13 @@ class WebsterApplication:
                 "request_id": request.request_id,
             })
             return response_text
-        decision = self.decision_engine.decide(self.context_builder.as_prompt(built) + "\nRelevant task memory: " + str(memory_context) + "\nRelevant conversation memory:\n" + conversation_context)
+        reasoning_context = self.multi_turn_reasoning.prompt_context(self.context.session_id)
+        decision = self.decision_engine.decide(
+            self.context_builder.as_prompt(built)
+            + "\nMulti-turn reasoning context:\n" + reasoning_context
+            + "\nRelevant task memory: " + str(memory_context)
+            + "\nRelevant conversation memory:\n" + conversation_context
+        )
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
         self.conversation_state.add("assistant", composed.text)
