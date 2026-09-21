@@ -96,13 +96,22 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A12 tests for result recall, pronoun-based calculation, session isolation, and non-numeric safety.
 - No files deleted; all changes are on `main`.
 
+**A13 — COMPLETE**
+- Added `intelligence/entity_context.py` for bounded session-local conversational entities.
+- Selected references can persist across multiple follow-up turns instead of existing for only one resolution.
+- Numeric results are refreshed after follow-up calculations so a later “that” can refer to the new result.
+- Context has explicit TTL expiry, bounded entity count, and invalidation support.
+- Entity context remains session-local and does not search unrelated sessions.
+- Added A13 tests for multi-turn retention, unknown-reference safety, and explicit invalidation.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A12 of rebuild complete**
+- Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A12 / rebuild restart**
-- Rebuild completion: **12 functional increments complete**
+- Current verified functional implementation: **A13 / rebuild restart**
+- Rebuild completion: **13 functional increments complete**
 
 ## Next rebuild target
-**A13 — Persistent conversational entities and multi-turn context:** retain selected references beyond a single follow-up and expire them safely when context changes.
+**A14 — Natural language reference binding:** resolve “that”, “the previous one”, “the first result”, and related references against explicit context rather than only the latest numeric result.
