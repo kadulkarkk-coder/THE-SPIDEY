@@ -28,6 +28,7 @@ from ..tools.tool_dispatcher import ToolDispatcher
 from ..tools.tool_registry import ToolRegistry
 from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
+from ..intelligence.task_executor import TaskExecutor
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -60,6 +61,7 @@ class WebsterApplication:
         self.tool_dispatcher = ToolDispatcher(self.tool_registry)
         self.action_router = ActionRouter(command_handler=self._action_command, tool_dispatcher=self.tool_dispatcher)
         self.progress = ProgressReporter()
+        self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
         self.started_at: datetime | None = None
@@ -95,6 +97,7 @@ class WebsterApplication:
         self.services.register_service("progress", self.progress, "Observable task progress")
         self.services.register_service("tool_dispatcher", self.tool_dispatcher, "Registered executable tools")
         self.services.register_service("action_router", self.action_router, "Intent-to-action routing")
+        self.services.register_service("task_executor", self.task_executor, "Verified multi-step task execution")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -127,6 +130,7 @@ class WebsterApplication:
         self.commands.register("runtime", self._command_runtime)
         self.commands.register("ai", self._command_ai)
         self.commands.register("plan", self._command_plan)
+        self.commands.register("run", self._command_run)
         self.commands.register("exit", self._command_exit)
         self.commands.register("quit", self._command_exit)
 
@@ -162,7 +166,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 15,
+            "services": 16,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -200,6 +204,14 @@ class WebsterApplication:
         self.conversation_state.add("user", current)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
+        if " then " in current.lower():
+            task = self.task_executor.execute(current, task_id=request.request_id or None)
+            response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None})
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.events.publish("intelligence.interpreted", interpretation.as_dict())
+            self.events.publish("task.completed" if task.ok else "task.failed", {"task_id": task.task_id, "steps": len(task.plan.steps), "completed": task.plan.completed})
+            return response_text
         action = self.action_router.route(interpretation, request_id=request.request_id)
         if action.handled:
             if action.ok:
@@ -230,6 +242,14 @@ class WebsterApplication:
         })
         return composed.text
 
+    def _command_run(self, request: CommandRequest) -> str:
+        parts = request.text.split(maxsplit=1)
+        goal = parts[1] if len(parts) > 1 else ""
+        result = self.task_executor.execute(goal, task_id=request.request_id or None)
+        if result.ok:
+            values = [item.message for item in result.results]
+            return str({"task_id": result.task_id, "status": "completed", "results": values})
+        return str({"task_id": result.task_id, "status": "failed", "error": result.error, "results": [item.message for item in result.results]})
     def _command_plan(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         goal = parts[1] if len(parts) > 1 else ""
