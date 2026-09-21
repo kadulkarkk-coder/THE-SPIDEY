@@ -38,12 +38,38 @@ class EntityContext:
         self._entities[name] = ContextEntity(name, str(value), task_id, self._turn, monotonic())
         self._trim()
 
+    def set_results(self, values: list[str] | tuple[str, ...], *, task_id: str = "") -> None:
+        """Store a bounded ordered result set for references such as 'the first result'."""
+        self.invalidate("result_1", "result_2", "result_3", "result_4", "result_5")
+        for index, value in enumerate(values[:5], 1):
+            self.set(f"result_{index}", str(value), task_id=task_id)
+
     def resolve(self, reference: str) -> ContextEntity | None:
         self.expire()
         key = self._normalize(reference)
-        if key in {"it", "that", "this", "the result", "that result", "the number", "that number"}:
-            return self._entities.get("last_number") or self._entities.get("last_task")
-        return self._entities.get(key)
+        aliases = {
+            "it": "last_number",
+            "that": "last_number",
+            "this": "last_number",
+            "the result": "last_number",
+            "that result": "last_number",
+            "the number": "last_number",
+            "that number": "last_number",
+            "the first result": "result_1",
+            "first result": "result_1",
+            "the second result": "result_2",
+            "second result": "result_2",
+            "the third result": "result_3",
+            "third result": "result_3",
+            "the fourth result": "result_4",
+            "fourth result": "result_4",
+            "the fifth result": "result_5",
+            "fifth result": "result_5",
+            "the previous one": "last_result",
+            "previous one": "last_result",
+        }
+        target = aliases.get(key, key)
+        return self._entities.get(target)
 
     def invalidate(self, *names: str) -> None:
         for name in names:
