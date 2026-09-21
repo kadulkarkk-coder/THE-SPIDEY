@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
+import re
 from uuid import uuid4
 
 from .command_contracts import CommandRequest, CommandResponse
@@ -222,6 +223,21 @@ class WebsterApplication:
     def _command_runtime(self, request: CommandRequest) -> str:
         return str(self.runtime.snapshot())
 
+    def _reasoning_goal(self, text: str) -> str:
+        cleaned = " ".join(text.split())
+        if re.search(r"\b(?:plan|build|create|make|write|solve|finish|help me with|work on)\b", cleaned, re.I):
+            return cleaned[:1000]
+        return ""
+
+    @staticmethod
+    def _reasoning_constraints(text: str) -> list[str]:
+        cleaned = " ".join(text.split())
+        patterns = (
+            r"\b(?:under|below|less than|within)\s+[^,.!?]+",
+            r"\b(?:without|avoid|don't|do not|must|should|only)\s+[^,.!?]+",
+        )
+        return [match.group(0)[:400] for pattern in patterns for match in re.finditer(pattern, cleaned, re.I)][:6]
+
     def _command_ai(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         prompt = parts[1] if len(parts) > 1 else ""
@@ -233,13 +249,16 @@ class WebsterApplication:
         conversation_context = self.conversation_memory.context(current, self.context.session_id)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
+        reasoning_goal = self._reasoning_goal(current)
         self.multi_turn_reasoning.observe(
             self.context.session_id,
             role="user",
             text=current,
             intent=interpretation.intent,
             target=interpretation.target,
+            goal=reasoning_goal,
             entities={key: str(value) for key, value in self.entity_context.snapshot().items()},
+            constraints=self._reasoning_constraints(current),
         )
         reference = self.reference_resolver.resolve(current, self.context.session_id)
         file_intent = self.file_search_intent.parse(current)
