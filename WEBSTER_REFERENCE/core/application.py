@@ -30,6 +30,7 @@ from ..intelligence.planning_engine import PlanningEngine
 from ..intelligence.progress_reporter import ProgressReporter
 from ..intelligence.task_executor import TaskExecutor
 from ..intelligence.task_memory import TaskMemoryStore
+from ..intelligence.conversation_memory import ConversationMemoryStore
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -63,6 +64,7 @@ class WebsterApplication:
         self.action_router = ActionRouter(command_handler=self._action_command, tool_dispatcher=self.tool_dispatcher)
         self.progress = ProgressReporter()
         self.task_memory = TaskMemoryStore()
+        self.conversation_memory = ConversationMemoryStore()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -101,6 +103,7 @@ class WebsterApplication:
         self.services.register_service("action_router", self.action_router, "Intent-to-action routing")
         self.services.register_service("task_executor", self.task_executor, "Verified multi-step task execution")
         self.services.register_service("task_memory", self.task_memory, "Persistent local task outcomes")
+        self.services.register_service("conversation_memory", self.conversation_memory, "Persistent local conversation recall")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -170,7 +173,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 17,
+            "services": 18,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -206,7 +209,9 @@ class WebsterApplication:
         current = prompt or request.text
         self.conversation.add("user", current)
         self.conversation_state.add("user", current)
+        self.conversation_memory.remember(self.context.session_id, "user", current)
         memory_context = self.task_memory.summary(current)
+        conversation_context = self.conversation_memory.context(current, self.context.session_id)
         built = self.context_builder.build(current, self.conversation_state, self.runtime.snapshot().as_dict())
         interpretation = self.intelligence.interpret(current)
         if " then " in current.lower():
@@ -214,6 +219,7 @@ class WebsterApplication:
             response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None})
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
             self.events.publish("intelligence.interpreted", interpretation.as_dict())
             self.events.publish("task.completed" if task.ok else "task.failed", {"task_id": task.task_id, "steps": len(task.plan.steps), "completed": task.plan.completed})
             return response_text
@@ -233,10 +239,11 @@ class WebsterApplication:
                 "request_id": request.request_id,
             })
             return response_text
-        decision = self.decision_engine.decide(self.context_builder.as_prompt(built) + "\nRelevant task memory: " + str(memory_context))
+        decision = self.decision_engine.decide(self.context_builder.as_prompt(built) + "\nRelevant task memory: " + str(memory_context) + "\nRelevant conversation memory:\n" + conversation_context)
         composed = self.response_composer.compose(decision)
         self.conversation.add("assistant", composed.text)
         self.conversation_state.add("assistant", composed.text)
+        self.conversation_memory.remember(self.context.session_id, "assistant", composed.text)
         self.events.publish("intelligence.interpreted", interpretation.as_dict())
         self.events.publish("intelligence.response.composed", {
             "provider": composed.provider,
