@@ -33,6 +33,7 @@ from ..intelligence.task_memory import TaskMemoryStore
 from ..intelligence.conversation_memory import ConversationMemoryStore
 from ..intelligence.memory_reference_resolver import MemoryReferenceResolver
 from ..intelligence.conversation_continuity import ConversationContinuity
+from ..intelligence.entity_context import EntityContext
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -69,6 +70,7 @@ class WebsterApplication:
         self.conversation_memory = ConversationMemoryStore()
         self.reference_resolver = MemoryReferenceResolver(self.task_memory, self.conversation_memory)
         self.continuity = ConversationContinuity(self.task_memory)
+        self.entity_context = EntityContext()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -110,6 +112,7 @@ class WebsterApplication:
         self.services.register_service("conversation_memory", self.conversation_memory, "Persistent local conversation recall")
         self.services.register_service("reference_resolver", self.reference_resolver, "Session-scoped memory reference resolution")
         self.services.register_service("continuity", self.continuity, "Reference-aware follow-up continuity")
+        self.services.register_service("entity_context", self.entity_context, "Session-local persistent conversational references")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -179,7 +182,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 20,
+            "services": 21,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -222,11 +225,13 @@ class WebsterApplication:
         interpretation = self.intelligence.interpret(current)
         reference = self.reference_resolver.resolve(current, self.context.session_id)
         continuity = self.continuity.resolve(current, self.context.session_id)
+        self.entity_context.observe(current)
         if continuity.resolved and continuity.intent == "recall_result":
             response_text = "The result was: " + continuity.text
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
             self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            self.entity_context.set("last_number", continuity.text, task_id=continuity.source_task_id)
             return response_text
         if continuity.resolved and continuity.intent == "followup_calculation":
             result = self.task_executor.execute("calculate " + continuity.text, task_id=request.request_id or None, session_id=self.context.session_id)
