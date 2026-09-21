@@ -250,6 +250,9 @@ class WebsterApplication:
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
             self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            if results:
+                self.entity_context.set_results([item.path for item in results], task_id=request.request_id or "")
+                self.entity_context.set("last_result", results[0].path, task_id=request.request_id or "")
             self.events.publish("files.content_searched", {
                 "query": file_intent.query,
                 "results": len(results),
