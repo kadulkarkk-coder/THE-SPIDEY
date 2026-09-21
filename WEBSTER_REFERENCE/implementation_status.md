@@ -33,13 +33,13 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A5 tests for question routing, entity extraction, constraints, and route explanations.
 - No files deleted; all changes are on `main`.
 
-**Verification note:** A1–A5 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
+**Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A5 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A5 / rebuild restart**
-- Rebuild completion: **5 functional increments complete**
+- Current verified functional implementation: **A6 / rebuild restart**
+- Rebuild completion: **6 functional increments complete**
 
 ## Next rebuild target
-**A6 — Functional task/action routing:** connect interpreted intents to the existing command, tool, permission, and planning boundaries so WEBSTER can safely move from understanding a request to selecting an executable capability.
+**A7 — Functional planning and multi-step task execution:** connect routed actions to inspectable plans, progress, dependencies, and verified execution.
