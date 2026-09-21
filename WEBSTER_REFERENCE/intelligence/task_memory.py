@@ -15,6 +15,7 @@ class TaskMemory:
     results: tuple[str, ...]
     error: str
     timestamp: str
+    session_id: str = ""
 
 class TaskMemoryStore:
     """Small JSON-backed task memory with atomic replacement and bounded history."""
@@ -28,11 +29,11 @@ class TaskMemoryStore:
         self._records: list[TaskMemory] = []
         self._load()
 
-    def remember(self, task_id: str, goal: str, status: str, results: list[str] | tuple[str, ...] = (), error: str = "") -> TaskMemory:
+    def remember(self, task_id: str, goal: str, status: str, results: list[str] | tuple[str, ...] = (), error: str = "", session_id: str = "") -> TaskMemory:
         record = TaskMemory(
             task_id.strip(), " ".join(goal.split())[:2000], status.strip().lower(),
             tuple(str(x)[:1000] for x in results)[-20:], str(error)[:1000],
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(timezone.utc).isoformat(), session_id.strip(),
         )
         if not record.task_id or not record.goal:
             raise ValueError("task_id and goal are required")
@@ -46,13 +47,15 @@ class TaskMemoryStore:
         with self._lock:
             return tuple(self._records[-max(0, limit):])
 
-    def find(self, text: str, limit: int = 5) -> tuple[TaskMemory, ...]:
+    def find(self, text: str, limit: int = 5, session_id: str = "") -> tuple[TaskMemory, ...]:
         terms = {x.lower() for x in text.split() if len(x) > 2}
         if not terms:
             return ()
         with self._lock:
             scored = []
             for record in self._records:
+                if session_id and record.session_id and record.session_id != session_id:
+                    continue
                 haystack = f"{record.goal} {' '.join(record.results)}".lower()
                 score = sum(term in haystack for term in terms)
                 if score:
@@ -60,8 +63,8 @@ class TaskMemoryStore:
             scored.sort(key=lambda item: (item[0], item[1].timestamp), reverse=True)
             return tuple(record for _, record in scored[:max(0, limit)])
 
-    def summary(self, text: str = "") -> dict[str, Any]:
-        matches = self.find(text) if text.strip() else self.recent(5)
+    def summary(self, text: str = "", session_id: str = "") -> dict[str, Any]:
+        matches = self.find(text, session_id=session_id) if text.strip() else self.recent(5)
         return {"count": len(self._records), "matches": [asdict(item) for item in matches]}
 
     def _load(self) -> None:
@@ -70,7 +73,7 @@ class TaskMemoryStore:
             if isinstance(data, list):
                 self._records = [
                     TaskMemory(str(x["task_id"]), str(x["goal"]), str(x["status"]),
-                               tuple(x.get("results", ())), str(x.get("error", "")), str(x["timestamp"]))
+                               tuple(x.get("results", ())), str(x.get("error", "")), str(x["timestamp"]), str(x.get("session_id", "")))
                     for x in data[-self.max_records:] if isinstance(x, dict) and "task_id" in x and "goal" in x
                 ]
         except (OSError, ValueError, TypeError, KeyError):
