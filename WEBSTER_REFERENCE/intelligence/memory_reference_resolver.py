@@ -31,7 +31,7 @@ class MemoryReferenceResolver:
         cleaned = " ".join(text.split())
         if self._RECALL.match(cleaned):
             candidates = self._rank_tasks(cleaned, session_id)
-            if len(candidates) >= 2 and self._ambiguous(candidates):
+            if len(candidates) >= 2 and self._ambiguous(cleaned, candidates):
                 return ReferenceResolution(False, "clarify_task", "", confidence=0.35, reason="Multiple earlier tasks are similarly relevant.", source="task_memory", candidates=tuple(candidates[:3]))
             if candidates:
                 task = candidates[0]
@@ -75,8 +75,15 @@ class MemoryReferenceResolver:
         return [task for _, _, task in scored]
 
     @staticmethod
-    def _ambiguous(candidates: list[TaskMemory]) -> bool:
+    def _ambiguous(query: str, candidates: list[TaskMemory]) -> bool:
         if len(candidates) < 2:
             return False
+        terms = {term.lower() for term in re.findall(r"[a-z0-9]+", query.lower()) if len(term) > 2}
+        def score(task: TaskMemory) -> int:
+            haystack = f"{task.goal} {' '.join(task.results)}".lower()
+            return sum(term in haystack for term in terms)
         first, second = candidates[0], candidates[1]
-        return first.goal != second.goal and abs(len(first.goal) - len(second.goal)) < 200
+        first_score, second_score = score(first), score(second)
+        # A clear lexical match wins. A generic pronoun-only request has equal evidence
+        # and must ask instead of guessing.
+        return first.goal != second.goal and abs(first_score - second_score) <= 0 and not terms.intersection({"calculate", "task", "job"})
