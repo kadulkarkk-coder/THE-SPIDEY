@@ -24,13 +24,13 @@ class TaskExecutor:
         self.progress = progress
         self.memory = memory
 
-    def execute(self, goal: str, *, task_id: str | None = None) -> TaskExecutionResult:
+    def execute(self, goal: str, *, task_id: str | None = None, session_id: str = "") -> TaskExecutionResult:
         task_id = task_id or uuid4().hex
         plan = self.planner.create_plan(goal)
         if not plan.steps:
             self.progress.report(task_id, "failed", 0.0, "No executable plan was created.")
             result = TaskExecutionResult(task_id, False, plan, (), "empty plan")
-            if self.memory: self.memory.remember(task_id, goal, "failed", error=result.error)
+            if self.memory: self.memory.remember(task_id, goal, "failed", error=result.error, session_id=session_id)
             return result
 
         self.progress.report(task_id, "started", 0.0, f"Executing {len(plan.steps)} step(s).")
@@ -41,7 +41,7 @@ class TaskExecutor:
                 plan = self.planner.mark_step(plan, step.index, "failed")
                 self.progress.report(task_id, "failed", plan.progress, f"Dependency for step {step.index} was not satisfied.")
                 result = TaskExecutionResult(task_id, False, plan, tuple(results), "dependency not satisfied")
-                if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error)
+                if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error, session_id)
                 return result
 
             plan = self.planner.mark_step(plan, step.index, "active")
@@ -62,7 +62,7 @@ class TaskExecutor:
 
         self.progress.report(task_id, "completed", 1.0, "All planned steps completed.")
         result = TaskExecutionResult(task_id, True, plan, tuple(results))
-        if self.memory: self.memory.remember(task_id, goal, "completed", [x.message for x in results])
+        if self.memory: self.memory.remember(task_id, goal, "completed", [x.message for x in results], session_id=session_id)
         return result
 
     @staticmethod
