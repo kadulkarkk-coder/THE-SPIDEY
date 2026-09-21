@@ -239,6 +239,9 @@ class WebsterApplication:
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
             self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            if result.ok:
+                for item in result.results:
+                    self.entity_context.observe(item.message, task_id=result.task_id)
             return response_text
         if reference.intent == "clarify_task":
             options = [f"{index}. {item.goal}" for index, item in enumerate(reference.candidates, 1)]
