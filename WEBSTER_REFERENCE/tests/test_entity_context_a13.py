@@ -21,3 +21,10 @@ def test_explicit_invalidation() -> None:
     assert ctx.resolve("it").value == "84"
     ctx.invalidate("last_number")
     assert ctx.resolve("it") is None
+
+
+def test_ordered_results_support_natural_references() -> None:
+    ctx = EntityContext()
+    ctx.set_results(["first-file.txt", "second-file.txt", "third-file.txt"])
+    assert ctx.resolve("the first result").value == "first-file.txt"
+    assert ctx.resolve("the second result").value == "second-file.txt"
