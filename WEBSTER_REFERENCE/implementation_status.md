@@ -68,13 +68,24 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A9 persistence and bounded-history tests.
 - No files deleted; all changes are on `main`.
 
+**A10 — COMPLETE**
+- Added `intelligence/memory_reference_resolver.py` for conservative follow-up resolution.
+- Added explicit handling for recall, repeat, and continue references.
+- Task memory is now session-scoped for newly recorded tasks, preventing cross-session replay.
+- `Do that again` replays the most recent completed task in the active session.
+- `What was that calculation we did earlier?` recalls the matching task instead of executing it.
+- `continue the previous task` resolves the most recent task in the active session and re-executes its goal through the normal permission/tool pipeline.
+- Unrelated sessions are rejected rather than guessed.
+- Added A10 tests for repeat, recall, continuation, and cross-session isolation.
+- No files deleted; all changes are on `main`.
+
 **Verification note:** A1–A6 source and tests are committed on `main`. The available GitHub implementation connector does not execute the repository's Python test suite, so test execution is not claimed. Source was re-fetched/verified where relevant after implementation.
 
 ## 70-sprint roadmap progress
-- Phase 0 Foundation: **A9 of rebuild complete**
+- Phase 0 Foundation: **A10 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A9 / rebuild restart**
-- Rebuild completion: **9 functional increments complete**
+- Current verified functional implementation: **A10 / rebuild restart**
+- Rebuild completion: **10 functional increments complete**
 
 ## Next rebuild target
-**A10 — Functional memory-aware follow-up reasoning:** resolve references to prior turns/tasks and use retrieved memory without confusing unrelated history.
+**A11 — Memory confidence and contextual disambiguation:** distinguish multiple plausible prior tasks and ask for clarification instead of guessing.
