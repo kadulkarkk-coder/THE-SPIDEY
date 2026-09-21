@@ -55,7 +55,7 @@ class TaskExecutor:
                 plan = self.planner.mark_step(plan, step.index, "failed")
                 self.progress.report(task_id, "failed", plan.progress, action.message or f"Step {step.index} could not be executed.")
                 result = TaskExecutionResult(task_id, False, plan, tuple(results), action.message or "step failed")
-                if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error)
+                if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error, session_id)
                 return result
             plan = self.planner.mark_step(plan, step.index, "completed")
             self.progress.report(task_id, "active", plan.progress, f"Step {step.index} completed.")
