@@ -121,11 +121,11 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A18 / rebuild restart**
-- Rebuild completion: **18 functional increments complete**
+- Current verified functional implementation: **A19 / rebuild restart**
+- Rebuild completion: **19 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A19 — Reliability loop:** add execution audit records, failure classification, and plan/result consistency checks.
+**Next rebuild target: A20 — Self-correction boundary:** connect reliability failures to bounded recovery decisions and explicit user-visible completion reporting.
 
 **A15 — COMPLETE**
 - Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
@@ -138,6 +138,14 @@ This document tracks **working implementation**, not reference-module existence.
 - No files deleted; all changes are on `main`.
 
 **A16 — COMPLETE**
+**A19 — COMPLETE**
+- Added `intelligence/execution_audit.py` for bounded execution audit records and failure classification.
+- Added `intelligence/reliability_checker.py` to compare plans, action results, and verification records before final completion.
+- Task execution now records every verification outcome and refuses final success when plan/result/verification counts or statuses disagree.
+- Failure classes include verified success, transient failure, unhandled action, false success, invalid result, and execution failure.
+- Added A19 tests for false-success classification and consistency rejection.
+- No files deleted; all changes are on `main`.
+
 **A18 — COMPLETE**
 - Added `intelligence/execution_verifier.py` to validate observable action outcomes before a plan step can become completed.
 - Successful actions must provide an observable result; unhandled actions and empty successes cannot be marked complete.
