@@ -121,11 +121,11 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A15 / rebuild restart**
-- Rebuild completion: **15 functional increments complete**
+- Current verified functional implementation: **A16 / rebuild restart**
+- Rebuild completion: **16 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A16 — Local knowledge and retrieval:** make WEBSTER retrieve useful local knowledge and documents by meaning/content rather than only keyword matches.
+**Next rebuild target: A17 — Robust planning:** turn multi-turn goals, constraints, retrieved evidence, and available tools into verified executable plans.
 
 **A15 — COMPLETE**
 - Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
@@ -135,4 +135,14 @@ This document tracks **working implementation**, not reference-module existence.
 - Integrated the reasoning context into the local decision prompt.
 - Added lightweight goal/constraint extraction so follow-up turns can retain what the user is trying to accomplish.
 - Added A15 tests for long-turn retention, session isolation, and bounded prompts.
+- No files deleted; all changes are on `main`.
+
+**A16 — COMPLETE**
+- Added `intelligence/local_retrieval.py` for deterministic local semantic-style retrieval.
+- WEBSTER now expands related concepts locally and ranks content evidence, so a request can retrieve related material even when the exact wording is different.
+- Retrieval is built on the approved A14 file-content index; filenames are not used as the semantic signal.
+- Retrieved excerpts are injected into the reasoning/decision context alongside conversation memory, task memory, goals, entities, and constraints.
+- Added bounded retrieval context and no external AI/service dependency.
+- Added A16 tests for related-concept retrieval and empty-query safety.
+- This is a lightweight semantic retrieval layer, not a claim of a neural embedding model; a future local embedding/model runtime can replace or augment it without changing the retrieval boundary.
 - No files deleted; all changes are on `main`.
