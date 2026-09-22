@@ -9,6 +9,7 @@ from .task_memory import TaskMemoryStore
 from .execution_verifier import ExecutionVerifier, VerificationResult
 from .execution_audit import ExecutionAuditor
 from .reliability_checker import ReliabilityChecker
+from .self_correction import SelfCorrection
 
 @dataclass(frozen=True)
 class TaskExecutionResult:
@@ -29,6 +30,7 @@ class TaskExecutor:
         self.verifier = verifier or ExecutionVerifier()
         self.auditor = ExecutionAuditor()
         self.reliability = ReliabilityChecker()
+        self.self_correction = SelfCorrection()
 
     def execute(self, goal: str, *, task_id: str | None = None, session_id: str = "") -> TaskExecutionResult:
         task_id = task_id or uuid4().hex
@@ -59,8 +61,12 @@ class TaskExecutor:
             )
             verification = self.verifier.verify(action)
             attempts = 1
-            while not verification.ok and self.verifier.can_retry(verification, attempts):
-                self.progress.report(task_id, "recovering", plan.progress, f"Retrying step {step.index} after a transient verification failure.")
+            while not verification.ok:
+                audit_preview = self.auditor.record(task_id, plan, step.index, action, verification)
+                decision = self.self_correction.decide(verification, audit_preview, attempts=attempts)
+                if decision.action != "retry":
+                    break
+                self.progress.report(task_id, "recovering", plan.progress, decision.user_message)
                 action = self.router.route(
                     self.router_input(step.description),
                     request_id=task_id,
@@ -69,10 +75,11 @@ class TaskExecutor:
                 attempts += 1
             results.append(action)
             verifications.append(verification)
-            self.auditor.record(task_id, plan, step.index, action, verification)
+            audit = self.auditor.record(task_id, plan, step.index, action, verification)
             if not verification.ok:
                 plan = self.planner.mark_step(plan, step.index, "failed")
-                message = f"Step {step.index} verification failed: {verification.reason}"
+                decision = self.self_correction.decide(verification, audit, attempts=attempts)
+                message = f"Step {step.index} stopped safely: {decision.user_message}"
                 self.progress.report(task_id, "failed", plan.progress, message)
                 result = TaskExecutionResult(task_id, False, plan, tuple(results), message)
                 if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error, session_id)
