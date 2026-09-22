@@ -6,6 +6,7 @@ from .planning_engine import Plan, PlanningEngine
 from .progress_reporter import ProgressReporter
 from .action_router import ActionRouter, ActionResult
 from .task_memory import TaskMemoryStore
+from .execution_verifier import ExecutionVerifier
 
 @dataclass(frozen=True)
 class TaskExecutionResult:
@@ -18,11 +19,12 @@ class TaskExecutionResult:
 class TaskExecutor:
     """Executes only ready plan steps, stopping safely on the first failure."""
 
-    def __init__(self, planner: PlanningEngine, router: ActionRouter, progress: ProgressReporter, memory: TaskMemoryStore | None = None) -> None:
+    def __init__(self, planner: PlanningEngine, router: ActionRouter, progress: ProgressReporter, memory: TaskMemoryStore | None = None, verifier: ExecutionVerifier | None = None) -> None:
         self.planner = planner
         self.router = router
         self.progress = progress
         self.memory = memory
+        self.verifier = verifier or ExecutionVerifier()
 
     def execute(self, goal: str, *, task_id: str | None = None, session_id: str = "") -> TaskExecutionResult:
         task_id = task_id or uuid4().hex
@@ -50,15 +52,26 @@ class TaskExecutor:
                 self.router_input(step.description),
                 request_id=task_id,
             )
+            verification = self.verifier.verify(action)
+            attempts = 1
+            while not verification.ok and self.verifier.can_retry(verification, attempts):
+                self.progress.report(task_id, "recovering", plan.progress, f"Retrying step {step.index} after a transient verification failure.")
+                action = self.router.route(
+                    self.router_input(step.description),
+                    request_id=task_id,
+                )
+                verification = self.verifier.verify(action)
+                attempts += 1
             results.append(action)
-            if not action.handled or not action.ok:
+            if not verification.ok:
                 plan = self.planner.mark_step(plan, step.index, "failed")
-                self.progress.report(task_id, "failed", plan.progress, action.message or f"Step {step.index} could not be executed.")
-                result = TaskExecutionResult(task_id, False, plan, tuple(results), action.message or "step failed")
+                message = f"Step {step.index} verification failed: {verification.reason}"
+                self.progress.report(task_id, "failed", plan.progress, message)
+                result = TaskExecutionResult(task_id, False, plan, tuple(results), message)
                 if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error, session_id)
                 return result
             plan = self.planner.mark_step(plan, step.index, "completed")
-            self.progress.report(task_id, "active", plan.progress, f"Step {step.index} completed.")
+            self.progress.report(task_id, "active", plan.progress, f"Step {step.index} verified and completed.")
 
         self.progress.report(task_id, "completed", 1.0, "All planned steps completed.")
         result = TaskExecutionResult(task_id, True, plan, tuple(results))
