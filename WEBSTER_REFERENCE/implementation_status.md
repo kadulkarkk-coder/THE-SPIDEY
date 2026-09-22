@@ -121,11 +121,11 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A19 / rebuild restart**
-- Rebuild completion: **19 functional increments complete**
+- Current verified functional implementation: **A20 / rebuild restart**
+- Rebuild completion: **20 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A20 — Self-correction boundary:** connect reliability failures to bounded recovery decisions and explicit user-visible completion reporting.
+**Restart A complete. Next: Restart B — real desktop, browser, and system control implementation.**
 
 **A15 — COMPLETE**
 - Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
@@ -138,6 +138,13 @@ This document tracks **working implementation**, not reference-module existence.
 - No files deleted; all changes are on `main`.
 
 **A16 — COMPLETE**
+**A20 — COMPLETE**
+- Added `intelligence/self_correction.py` as a bounded, non-destructive recovery decision layer.
+- Transient failures may use the existing retry budget; unverifiable or unavailable actions stop safely instead of being falsely reported as completed.
+- Integrated self-correction into `TaskExecutor` so recovery decisions are explicit and user-visible through progress messages.
+- Added A20 tests for bounded retry selection, safe stopping on unverifiable results, and verified-result acceptance.
+- No files deleted; all changes are on `main`.
+
 **A19 — COMPLETE**
 - Added `intelligence/execution_audit.py` for bounded execution audit records and failure classification.
 - Added `intelligence/reliability_checker.py` to compare plans, action results, and verification records before final completion.
