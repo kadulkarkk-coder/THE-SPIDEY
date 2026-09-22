@@ -38,6 +38,7 @@ from ..intelligence.entity_context import EntityContext
 from ..intelligence.content_file_index import ContentFileIndex
 from ..intelligence.file_search_intent import FileSearchIntentParser
 from ..intelligence.multi_turn_reasoning import MultiTurnReasoning
+from ..intelligence.local_retrieval import LocalRetriever
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -78,6 +79,7 @@ class WebsterApplication:
         self.file_index = ContentFileIndex.from_environment()
         self.file_search_intent = FileSearchIntentParser()
         self.multi_turn_reasoning = MultiTurnReasoning()
+        self.local_retriever = LocalRetriever(self.file_index)
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -122,6 +124,7 @@ class WebsterApplication:
         self.services.register_service("entity_context", self.entity_context, "Session-local persistent conversational references")
         self.services.register_service("file_index", self.file_index, "Background content index for approved local files")
         self.services.register_service("multi_turn_reasoning", self.multi_turn_reasoning, "Bounded session-local long-turn reasoning context")
+        self.services.register_service("local_retriever", self.local_retriever, "Local semantic-style content retrieval")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -193,7 +196,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 23,
+            "services": 24,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -291,6 +294,8 @@ class WebsterApplication:
             return response_text
         continuity = self.continuity.resolve(current, self.context.session_id)
         self.entity_context.observe(current)
+        retrieval_hits = self.local_retriever.retrieve(current, limit=4)
+        local_evidence = self.local_retriever.context(retrieval_hits)
         if continuity.resolved and continuity.intent == "recall_result":
             response_text = "The result was: " + continuity.text
             self.conversation.add("assistant", response_text)
@@ -364,6 +369,7 @@ class WebsterApplication:
         decision = self.decision_engine.decide(
             self.context_builder.as_prompt(built)
             + "\nMulti-turn reasoning context:\n" + reasoning_context
+            + "\nLocal retrieved evidence:\n" + local_evidence
             + "\nRelevant task memory: " + str(memory_context)
             + "\nRelevant conversation memory:\n" + conversation_context
         )
