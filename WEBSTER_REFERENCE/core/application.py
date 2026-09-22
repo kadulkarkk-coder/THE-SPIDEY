@@ -39,6 +39,7 @@ from ..intelligence.content_file_index import ContentFileIndex
 from ..intelligence.file_search_intent import FileSearchIntentParser
 from ..intelligence.multi_turn_reasoning import MultiTurnReasoning
 from ..intelligence.local_retrieval import LocalRetriever
+from ..intelligence.robust_planner import RobustPlanner
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
@@ -80,6 +81,7 @@ class WebsterApplication:
         self.file_search_intent = FileSearchIntentParser()
         self.multi_turn_reasoning = MultiTurnReasoning()
         self.local_retriever = LocalRetriever(self.file_index)
+        self.robust_planner = RobustPlanner(self.planning)
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -125,6 +127,7 @@ class WebsterApplication:
         self.services.register_service("file_index", self.file_index, "Background content index for approved local files")
         self.services.register_service("multi_turn_reasoning", self.multi_turn_reasoning, "Bounded session-local long-turn reasoning context")
         self.services.register_service("local_retriever", self.local_retriever, "Local semantic-style content retrieval")
+        self.services.register_service("robust_planner", self.robust_planner, "Verified goal-to-plan planning boundary")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -196,7 +199,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 24,
+            "services": 25,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -341,8 +344,21 @@ class WebsterApplication:
             self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
             return response_text
         if " then " in current.lower():
+            verified = self.robust_planner.build(
+                current,
+                context=self.multi_turn_reasoning.context(self.context.session_id),
+                evidence=retrieval_hits,
+                available_tools=self.tool_registry.names(),
+            )
+            if not verified.executable:
+                response_text = str({"status": "blocked", "reason": "plan verification failed", "plan": verified.as_dict()})
+                self.conversation.add("assistant", response_text)
+                self.conversation_state.add("assistant", response_text)
+                self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+                self.events.publish("plan.blocked", {"goal": verified.goal, "blockers": verified.blockers})
+                return response_text
             task = self.task_executor.execute(current, task_id=request.request_id or None, session_id=self.context.session_id)
-            response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None})
+            response_text = str({"task_id": task.task_id, "status": "completed" if task.ok else "failed", "results": [item.message for item in task.results], "error": task.error or None, "plan_confidence": verified.confidence})
             self.conversation.add("assistant", response_text)
             self.conversation_state.add("assistant", response_text)
             self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
@@ -394,6 +410,13 @@ class WebsterApplication:
     def _command_run(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         goal = parts[1] if len(parts) > 1 else ""
+        verified = self.robust_planner.build(
+            goal,
+            context=self.multi_turn_reasoning.context(self.context.session_id),
+            available_tools=self.tool_registry.names(),
+        )
+        if not verified.executable:
+            return str({"status": "blocked", "reason": "plan verification failed", "plan": verified.as_dict()})
         result = self.task_executor.execute(goal, task_id=request.request_id or None)
         if result.ok:
             values = [item.message for item in result.results]
@@ -402,8 +425,12 @@ class WebsterApplication:
     def _command_plan(self, request: CommandRequest) -> str:
         parts = request.text.split(maxsplit=1)
         goal = parts[1] if len(parts) > 1 else ""
-        plan = self.planning.create_plan(goal)
-        return str({"goal": plan.goal, "steps": [step.description for step in plan.steps]})
+        verified = self.robust_planner.build(
+            goal,
+            context=self.multi_turn_reasoning.context(self.context.session_id),
+            available_tools=self.tool_registry.names(),
+        )
+        return str(verified.as_dict())
 
     def _command_exit(self, request: CommandRequest) -> str:
         self.stop()
