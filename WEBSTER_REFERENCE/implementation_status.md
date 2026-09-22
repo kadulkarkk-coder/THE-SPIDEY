@@ -121,11 +121,11 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A17 / rebuild restart**
-- Rebuild completion: **17 functional increments complete**
+- Current verified functional implementation: **A18 / rebuild restart**
+- Rebuild completion: **18 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A18 — Execution verification:** verify task outcomes against the plan, recover from bounded failures, and prevent false completion.
+**Next rebuild target: A19 — Reliability loop:** add execution audit records, failure classification, and plan/result consistency checks.
 
 **A15 — COMPLETE**
 - Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
@@ -138,6 +138,15 @@ This document tracks **working implementation**, not reference-module existence.
 - No files deleted; all changes are on `main`.
 
 **A16 — COMPLETE**
+**A18 — COMPLETE**
+- Added `intelligence/execution_verifier.py` to validate observable action outcomes before a plan step can become completed.
+- Successful actions must provide an observable result; unhandled actions and empty successes cannot be marked complete.
+- Added bounded recovery for explicitly transient failures, with at most one retry after the initial attempt.
+- Integrated verification into `TaskExecutor`, so task completion now means the executed step also passed verification.
+- Progress events now expose a recovery state and distinguish verified completion from raw execution.
+- Added A18 tests for observable success, transient bounded retry, and unhandled-action rejection.
+- No files deleted; all changes are on `main`.
+
 **A17 — COMPLETE**
 - Added `intelligence/robust_planner.py` to turn goals into inspectable verified plans.
 - Planning now carries active session constraints and bounded local retrieval evidence into the plan record.
