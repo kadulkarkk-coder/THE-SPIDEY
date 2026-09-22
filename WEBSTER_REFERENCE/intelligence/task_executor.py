@@ -6,7 +6,9 @@ from .planning_engine import Plan, PlanningEngine
 from .progress_reporter import ProgressReporter
 from .action_router import ActionRouter, ActionResult
 from .task_memory import TaskMemoryStore
-from .execution_verifier import ExecutionVerifier
+from .execution_verifier import ExecutionVerifier, VerificationResult
+from .execution_audit import ExecutionAuditor
+from .reliability_checker import ReliabilityChecker
 
 @dataclass(frozen=True)
 class TaskExecutionResult:
@@ -25,6 +27,8 @@ class TaskExecutor:
         self.progress = progress
         self.memory = memory
         self.verifier = verifier or ExecutionVerifier()
+        self.auditor = ExecutionAuditor()
+        self.reliability = ReliabilityChecker()
 
     def execute(self, goal: str, *, task_id: str | None = None, session_id: str = "") -> TaskExecutionResult:
         task_id = task_id or uuid4().hex
@@ -37,6 +41,7 @@ class TaskExecutor:
 
         self.progress.report(task_id, "started", 0.0, f"Executing {len(plan.steps)} step(s).")
         results: list[ActionResult] = []
+        verifications: list[VerificationResult] = []
         for step in plan.steps:
             ready = self.planner.next_ready(plan)
             if step not in ready:
@@ -63,6 +68,8 @@ class TaskExecutor:
                 verification = self.verifier.verify(action)
                 attempts += 1
             results.append(action)
+            verifications.append(verification)
+            self.auditor.record(task_id, plan, step.index, action, verification)
             if not verification.ok:
                 plan = self.planner.mark_step(plan, step.index, "failed")
                 message = f"Step {step.index} verification failed: {verification.reason}"
@@ -73,7 +80,13 @@ class TaskExecutor:
             plan = self.planner.mark_step(plan, step.index, "completed")
             self.progress.report(task_id, "active", plan.progress, f"Step {step.index} verified and completed.")
 
-        self.progress.report(task_id, "completed", 1.0, "All planned steps completed.")
+        consistency = self.reliability.check(plan, tuple(results), tuple(verifications))
+        if not consistency.ok:
+            self.progress.report(task_id, "failed", plan.progress, f"Reliability check failed: {consistency.reason}")
+            result = TaskExecutionResult(task_id, False, plan, tuple(results), consistency.reason)
+            if self.memory: self.memory.remember(task_id, goal, "failed", [x.message for x in results], result.error, session_id)
+            return result
+        self.progress.report(task_id, "completed", 1.0, "All planned steps completed and passed reliability checks.")
         result = TaskExecutionResult(task_id, True, plan, tuple(results))
         if self.memory: self.memory.remember(task_id, goal, "completed", [x.message for x in results], session_id=session_id)
         return result
