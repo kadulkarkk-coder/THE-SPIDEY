@@ -7,10 +7,11 @@ from .local_calculator import calculate
 from .local_knowledge import LocalKnowledge
 from .local_provider import LocalProvider
 from .response_composer import ComposedResponse, ResponseComposer
+from .robust_planner import RobustPlanner, VerifiedPlan, VerifiedStep
 
 __all__ = [
     "Decision", "DecisionEngine", "OfflineProvider", "ProviderResponse",
     "LocalProvider", "LocalKnowledge", "calculate",
     "ConversationState", "ConversationTurn", "ContextBuilder", "BuiltContext",
-    "ResponseComposer", "ComposedResponse",
+    "ResponseComposer", "ComposedResponse", "RobustPlanner", "VerifiedPlan", "VerifiedStep",
 ]
