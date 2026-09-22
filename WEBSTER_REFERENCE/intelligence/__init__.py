@@ -11,10 +11,11 @@ from .robust_planner import RobustPlanner, VerifiedPlan, VerifiedStep
 from .execution_verifier import ExecutionVerifier, VerificationResult
 from .execution_audit import ExecutionAuditor, ExecutionAudit
 from .reliability_checker import ReliabilityChecker, ReliabilityCheck
+from .self_correction import SelfCorrection, RecoveryDecision
 
 __all__ = [
     "Decision", "DecisionEngine", "OfflineProvider", "ProviderResponse",
     "LocalProvider", "LocalKnowledge", "calculate",
     "ConversationState", "ConversationTurn", "ContextBuilder", "BuiltContext",
-    "ResponseComposer", "ComposedResponse", "RobustPlanner", "VerifiedPlan", "VerifiedStep", "ExecutionVerifier", "VerificationResult", "ExecutionAuditor", "ExecutionAudit", "ReliabilityChecker", "ReliabilityCheck",
+    "ResponseComposer", "ComposedResponse", "RobustPlanner", "VerifiedPlan", "VerifiedStep", "ExecutionVerifier", "VerificationResult", "ExecutionAuditor", "ExecutionAudit", "ReliabilityChecker", "ReliabilityCheck", "SelfCorrection", "RecoveryDecision",
 ]
