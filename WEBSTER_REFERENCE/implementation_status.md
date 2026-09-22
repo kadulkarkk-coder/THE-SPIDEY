@@ -121,11 +121,11 @@ This document tracks **working implementation**, not reference-module existence.
 ## 70-sprint roadmap progress
 - Phase 0 Foundation: **A13 of rebuild complete**
 - Legacy/reference roadmap: retained for compatibility; earlier percentages are **not treated as proof of functionality**.
-- Current verified functional implementation: **A16 / rebuild restart**
-- Rebuild completion: **16 functional increments complete**
+- Current verified functional implementation: **A17 / rebuild restart**
+- Rebuild completion: **17 functional increments complete**
 
 ## Next rebuild target
-**Next rebuild target: A17 — Robust planning:** turn multi-turn goals, constraints, retrieved evidence, and available tools into verified executable plans.
+**Next rebuild target: A18 — Execution verification:** verify task outcomes against the plan, recover from bounded failures, and prevent false completion.
 
 **A15 — COMPLETE**
 - Added `intelligence/multi_turn_reasoning.py` for bounded long-conversation state.
@@ -138,6 +138,16 @@ This document tracks **working implementation**, not reference-module existence.
 - No files deleted; all changes are on `main`.
 
 **A16 — COMPLETE**
+**A17 — COMPLETE**
+- Added `intelligence/robust_planner.py` to turn goals into inspectable verified plans.
+- Planning now carries active session constraints and bounded local retrieval evidence into the plan record.
+- Each step is checked for required capabilities against the currently registered tools before execution.
+- Added explicit blockers and confidence so unavailable capabilities are reported instead of silently executed.
+- Integrated verification into `plan`, `run`, and natural-language multi-step execution paths.
+- Multi-step execution is now blocked when plan verification finds a missing required capability.
+- Added A17 tests for available-tool execution, missing-capability blocking, and constraint propagation.
+- No files deleted; all changes are on `main`.
+
 - Added `intelligence/local_retrieval.py` for deterministic local semantic-style retrieval.
 - WEBSTER now expands related concepts locally and ranks content evidence, so a request can retrieve related material even when the exact wording is different.
 - Retrieval is built on the approved A14 file-content index; filenames are not used as the semantic signal.
