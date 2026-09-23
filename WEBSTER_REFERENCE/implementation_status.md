@@ -240,3 +240,35 @@ Natural-language requests are routed through the unified desktop controller. No 
 **Restart B progress: 20 / 20 = 100% ✅**
 
 Next: **Restart C1 — local AI/model runtime.**
+
+
+## Restart C1–C20 — COMPLETE
+
+- C1 contracts — generation/model descriptors.
+- C2 manager — unified local AI controller.
+- C3 registry — bounded local model registry.
+- C4 loader — safe local manifest/GGUF inspection with optional llama.cpp.
+- C5 tokenizer — dependency-free tokenization/truncation boundary.
+- C6 inference engine — deterministic local inference plus optional GGUF backend.
+- C7 resource profiles — eco/balanced/quality budgets.
+- C8 prompt context — bounded history/evidence construction.
+- C9 local generator — context + inference orchestration.
+- C10 semantic adapter — deterministic intent/domain hints.
+- C11 embedding adapter — dependency-free hashed vectors for local retrieval.
+- C12 offline stack — deterministic fallback path.
+- C13 model benchmark — bounded on-device benchmark harness.
+- C14 resource guard — per-request token/time limits.
+- C15 model cache — bounded LRU response cache.
+- C16 model router — local model selection.
+- C17 model permissions — explicit local model capability boundary.
+- C18 learning hooks — bounded observations without self-modifying core code.
+- C19 external provider — optional boundary, disabled by default and no hard-coded keys.
+- C20 unified local AI controller — one local-first entry point.
+
+The A+B+C executable is intentionally separate from later WEBSTER phases. No model is downloaded automatically. GGUF support is optional; the built-in deterministic model remains offline and dependency-light.
+
+**Restart C progress: 20 / 20 = 100% ✅**
+
+**A+B+C combined progress: 60 / 520 theoretical increments.**
+
+Tests were added for the C phase; they have not been executed in this environment.
