@@ -43,7 +43,7 @@ from ..intelligence.robust_planner import RobustPlanner
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
-from ..desktop.desktop_runtime import DesktopRuntime
+from ..desktop.desktop_controller import DesktopController
 
 
 class WebsterApplication:
@@ -83,7 +83,7 @@ class WebsterApplication:
         self.multi_turn_reasoning = MultiTurnReasoning()
         self.local_retriever = LocalRetriever(self.file_index)
         self.robust_planner = RobustPlanner(self.planning)
-        self.desktop = DesktopRuntime()
+        self.desktop = DesktopController()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -271,7 +271,7 @@ class WebsterApplication:
         )
         reference = self.reference_resolver.resolve(current, self.context.session_id)
         file_intent = self.file_search_intent.parse(current)
-        desktop_action = self.desktop.handle(current)
+        desktop_action = self.desktop.execute(current)
         if desktop_action.handled:
             response_text = desktop_action.message
             self.conversation.add("assistant", response_text)
