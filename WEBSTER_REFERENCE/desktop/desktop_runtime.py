@@ -106,9 +106,6 @@ class DesktopRuntime:
             if type_match:
                 return DesktopAction(True, True, self.keyboard.type_text(type_match.group(1)), "desktop.keyboard.write")
 
-            return DesktopAction.not_handled() if hasattr(DesktopAction, "not_handled") else DesktopAction(False, True, "")
+            return DesktopAction(False, True, "")
         except Exception as exc:
             return self._failure(str(exc))
-
-
-DesktopAction.not_handled = staticmethod(lambda: DesktopAction(False, True, ""))  # type: ignore[attr-defined]
