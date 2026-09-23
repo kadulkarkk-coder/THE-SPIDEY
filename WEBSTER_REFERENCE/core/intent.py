@@ -19,9 +19,19 @@ class ParsedIntent:
         return bool(self.arguments)
 
 
+_DIRECT_COMMANDS = frozenset({
+    "help", "status", "diagnostics", "context", "runtime", "ai",
+    "plan", "run", "memory", "exit", "quit",
+})
+
+
 def parse_intent(text: str) -> ParsedIntent:
     raw = text.strip()
     parts = tuple(raw.split())
     if not parts:
         return ParsedIntent("", (), raw)
-    return ParsedIntent(parts[0].lower(), parts[1:], raw)
+    name = parts[0].lower()
+    if name in _DIRECT_COMMANDS:
+        return ParsedIntent(name, parts[1:], raw)
+    # Natural-language requests enter the AI boundary automatically.
+    return ParsedIntent("ai", (raw,), raw)
