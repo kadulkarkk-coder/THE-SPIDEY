@@ -180,3 +180,37 @@ This document tracks **working implementation**, not reference-module existence.
 - Added A16 tests for related-concept retrieval and empty-query safety.
 - This is a lightweight semantic retrieval layer, not a claim of a neural embedding model; a future local embedding/model runtime can replace or augment it without changing the retrieval boundary.
 - No files deleted; all changes are on `main`.
+
+
+## Restart B — Real Desktop/System Control
+
+**B1 — COMPLETE**
+- Added `desktop/system_interface.py` for synchronous local system snapshots and safe HTTP(S) URL opening.
+- No background polling is introduced.
+
+**B2 — COMPLETE**
+- Added `desktop/process_discovery.py` for read-only Windows/Linux process enumeration and bounded name search.
+- Process termination is not exposed by natural-language B2 actions.
+
+**B3 — COMPLETE**
+- Connected real application launching through the existing launcher boundary.
+- Added explicit safe aliases for common Windows applications such as Notepad, Calculator, Paint, Explorer, Task Manager, PowerShell, CMD, Edge and Chrome.
+- URL opening uses the operating system browser instead of shell parsing.
+
+**B4 — COMPLETE**
+- Added `desktop/window_control.py` with real Windows window enumeration and focus/minimize/maximize/restore operations.
+- Window operations use Win32 APIs directly and do not start a polling loop.
+
+**B5 — COMPLETE**
+- Added `desktop/keyboard_driver.py` using Win32 `SendInput` for explicit key actions and bounded basic text entry.
+- No global key listener is installed.
+- Natural-language requests such as `press ctrl+l` and `type hello` now have a real desktop execution boundary.
+
+**B integration**
+- Added `desktop/desktop_runtime.py` as the B1-B5 natural-language action boundary.
+- Wired the runtime into `core/application.py`.
+- Unknown direct terminal phrases now enter the AI boundary automatically, so commands such as `open google` do not require manually typing `ai`.
+- Existing files and architecture are preserved; no files were deleted.
+- Main branch only.
+
+**Restart B progress: 5 / 20 = 25%. Next: B6 — real mouse control.**
