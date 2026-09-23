@@ -7,6 +7,7 @@ from .decision_engine import ProviderResponse
 from .intent_pipeline import IntelligencePipeline
 from .local_calculator import calculate
 from .local_knowledge import LocalKnowledge
+from ..ai.local_ai_controller import LocalAIController
 
 
 class LocalProvider:
@@ -17,6 +18,7 @@ class LocalProvider:
     def __init__(self) -> None:
         self.knowledge = LocalKnowledge()
         self.intelligence = IntelligencePipeline()
+        self.local_ai = LocalAIController()
 
     def generate(self, prompt: str) -> ProviderResponse:
         cleaned = " ".join(prompt.split())
@@ -39,6 +41,13 @@ class LocalProvider:
                     f"The answer is {value}.", self.name, 0.99,
                     (("mode", "local"), ("source", "calculator"), ("intent", interpretation.intent)),
                 )
+
+        try:
+            generated = self.local_ai.generate(cleaned, profile="eco")
+            if generated.text and not generated.text.startswith("Local model runtime received:"):
+                return ProviderResponse(generated.text, self.name, generated.confidence, (("mode", "local-model"), ("model", generated.model_id)))
+        except Exception:
+            pass
 
         if not interpretation.constraints_allowed:
             return ProviderResponse(
