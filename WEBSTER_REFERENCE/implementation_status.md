@@ -214,3 +214,29 @@ This document tracks **working implementation**, not reference-module existence.
 - Main branch only.
 
 **Restart B progress: 5 / 20 = 25%. Next: B6 — real mouse control.**
+
+
+## Restart B5–B20 — COMPLETE
+
+- B5 keyboard input — explicit Win32 key presses and bounded typing.
+- B6 mouse control — move, click, double-click, scroll, cursor position.
+- B7 clipboard — read/write clipboard text.
+- B8 file operations — bounded text-file reads, directory listing and controlled copying.
+- B9 notifications — local notification boundary.
+- B10 window actions — focus, minimize, maximize and restore.
+- B11 display information — screen/work-area dimensions.
+- B12 system settings discovery — OS, machine, language and local user metadata.
+- B13 safe shell — allowlisted read-only commands only.
+- B14 browser control — system-browser navigation and web search.
+- B15 screenshot — on-demand capture when Pillow is installed.
+- B16 hotkeys — bounded explicit hotkey sequences.
+- B17 desktop automation — synchronous sequences capped at 8 steps.
+- B18 desktop audit — bounded action history.
+- B19 desktop permissions — read capabilities plus explicit approval/grants for writes.
+- B20 unified desktop controller — single boundary joining the B5–B19 capabilities.
+
+Natural-language requests are routed through the unified desktop controller. No files were deleted. All changes are on **main**.
+
+**Restart B progress: 20 / 20 = 100% ✅**
+
+Next: **Restart C1 — local AI/model runtime.**
