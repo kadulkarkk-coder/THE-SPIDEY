@@ -43,6 +43,7 @@ from ..intelligence.robust_planner import RobustPlanner
 from ..intelligence.response_composer import ResponseComposer
 from ..runtime.request_bridge import RuntimeRequestBridge
 from ..runtime.runtime_manager import RuntimeManager
+from ..desktop.desktop_runtime import DesktopRuntime
 
 
 class WebsterApplication:
@@ -82,6 +83,7 @@ class WebsterApplication:
         self.multi_turn_reasoning = MultiTurnReasoning()
         self.local_retriever = LocalRetriever(self.file_index)
         self.robust_planner = RobustPlanner(self.planning)
+        self.desktop = DesktopRuntime()
         self.task_executor = TaskExecutor(self.planning, self.action_router, self.progress, self.task_memory)
         self.runtime = RuntimeManager()
         self.request_bridge = RuntimeRequestBridge(self.pipeline, self.runtime, self.events)
@@ -128,6 +130,7 @@ class WebsterApplication:
         self.services.register_service("multi_turn_reasoning", self.multi_turn_reasoning, "Bounded session-local long-turn reasoning context")
         self.services.register_service("local_retriever", self.local_retriever, "Local semantic-style content retrieval")
         self.services.register_service("robust_planner", self.robust_planner, "Verified goal-to-plan planning boundary")
+        self.services.register_service("desktop", self.desktop, "B1-B5 real local desktop control")
 
     def _register_action_tools(self) -> None:
         from datetime import datetime
@@ -199,7 +202,7 @@ class WebsterApplication:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "components": self.health.component_count,
             "commands": self.commands.count(),
-            "services": 25,
+            "services": 26,
             "provider": self.decision_engine.provider.name,
             "conversation_turns": self.conversation_state.size(),
             "healthy": self.health.is_healthy(),
@@ -268,6 +271,15 @@ class WebsterApplication:
         )
         reference = self.reference_resolver.resolve(current, self.context.session_id)
         file_intent = self.file_search_intent.parse(current)
+        desktop_action = self.desktop.handle(current)
+        if desktop_action.handled:
+            response_text = desktop_action.message
+            self.conversation.add("assistant", response_text)
+            self.conversation_state.add("assistant", response_text)
+            self.conversation_memory.remember(self.context.session_id, "assistant", response_text)
+            self.events.publish("desktop.action", {"capability": desktop_action.capability, "ok": desktop_action.ok, "message": desktop_action.message})
+            return response_text
+
         if file_intent.is_search:
             results = self.file_index.search(file_intent.query, limit=file_intent.limit)
             if results:
